@@ -1,7 +1,9 @@
 
-# simscale
+# SimScale External Building Aerodynamics
 
-simscale is a wrapper package that wraps the SimScale API in an easy to set of objects for External Building Aerodynamcs
+> :warning: **This code is not production-ready** and should only be used for demo/testing purposes.
+
+simscale-eba is a wrapper package that wraps the SimScale API in an easy to set of objects for External Building Aerodynamcs
 
 ## Installation
 
@@ -11,7 +13,7 @@ You can use pip:
 pip install git+https://github.com/SimScaleGmbH/external-building-aerodynamics.git
 ```
 
-## Development Installation
+### Development branch installation
 
 Development branches can be created and used. To install a branch in your environment please use:
 
@@ -19,7 +21,7 @@ Development branches can be created and used. To install a branch in your enviro
 pip install git+https://github.com/SimScaleGmbH/external-building-aerodynamics.git@branch-name
 ```
 
-## Version Installation
+### Version installation
 
 Versions released for backward compatibility. Two current versions exist:
 
@@ -33,15 +35,17 @@ pip install git+https://github.com/SimScaleGmbH/external-building-aerodynamics.g
 ```
 
 ## Usage
+
 To import the entire module:
 
-    import simscale
+    import simscale_eba
 
 Alternatively, you can use components independently:
 
-    import simscale.PedestrianWindComfort as pwc
+    import simscale_eba.PedestrianWindComfort as pwc
 
 ## Modules
+
 | Module | Description |
 |--|--|
 | BoundaryLayer | Classes to create, analyze and visualize atmospheric boundary layers, with different standards and roughnesses, reference speeds, and heights |
@@ -54,3 +58,7 @@ Alternatively, you can use components independently:
 | WindTunnel | This module should also be seen as an equivalent in the PWC workflow, this time it's equivalent to the **Region of interest** in PWC. The region of interest takes the usual parameters of a region of interest and calculates the wind tunnel size position and orientation that can also be used to set up a **Latice Bolzmann Method** simulation directly|
 | SimulationCore | This module contains most of the API-related class methods, since we actually reuse the methods across many different objects in this collection of modules, they will in the future be updated to pull the methods in this module to make the package more maintainable. This should be considered an **internal module** unless you wish to develop your own classes |
 | SpectralAnalysis | Spectral analysis contains classes and functions useful for analysing signals produce from probe point result controls. Currently this is mainly used for internal testing and validation but can be used to analyse any signal if needed |
+
+## Contact
+
+This package is maintained by app-eng@simscale.com
