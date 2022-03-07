@@ -3,7 +3,7 @@
 
 > :warning: **This code is not production-ready** and should only be used for demo/testing purposes.
 
-simscale-eba is a wrapper package that wraps the SimScale API in an easy to set of objects for External Building Aerodynamcs
+simscale-eba is a wrapper package that wraps the SimScale API in an easy to set of objects for External Building Aerodynamics
 
 ## Installation
 
