@@ -1,13 +1,13 @@
 # import pandas as pd
-import matplotlib as mpl
+import pathlib
+
 import matplotlib.patches as patches
 import matplotlib.pyplot as plt
-import numpy as np
 import pandas as pd
-import pathlib
-import simscale_eba.ResultProcessing as res
 from matplotlib.lines import Line2D
 from scipy import stats
+
+import simscale_eba.ResultProcessing as res
 
 angle = 0  # hard coded for this angle
 b = 10  # building width in meters

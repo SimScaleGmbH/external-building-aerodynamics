@@ -1,7 +1,9 @@
+import pathlib
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import pathlib
+
 import simscale_eba.BoundaryLayer as abl
 
 experimental_path = pathlib.Path.cwd() / "Profile_b10.csv"
