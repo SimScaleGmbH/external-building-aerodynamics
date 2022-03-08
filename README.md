@@ -61,4 +61,4 @@ Alternatively, you can use components independently:
 
 ## Contact
 
-This package is maintained by app-eng@simscale.com
+This package is maintained by [@DHLynch](https://github.com/DHLynch)
