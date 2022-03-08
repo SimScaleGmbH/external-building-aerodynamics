@@ -1,0 +1,3 @@
+prod_api_keys:
+  SIMSCALE_API_URL: "https://api.simscale.com"
+  SIMSCALE_API_KEY: "your key here"
