@@ -1,0 +1,17 @@
+wheel
+pandas
+numpy
+datetime
+pathlib
+scipy
+matplotlib
+vtk
+click
+pint
+pyarrow
+sklearn
+pyyaml
+
+ladybug-core>=0.38.0
+simscale-sdk @ git+https://github.com/SimScaleGmbH/simscale-python-sdk.git
+#pyarrow==4.0.0 will be added later
