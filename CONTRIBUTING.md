@@ -36,7 +36,7 @@ A message like this should appear:
 
     remote:
     remote: To create a merge request for pwc_dev2, visit:
-    remote:   https://github.com/SimScaleGmbH/external-building-aerodynamics[...]
+    remote:   https://github.com/SimScaleGmbH/external-building-aerodynamics/pull/new/pwc_dev2
     remote:
     To https://github.com/SimScaleGmbH/external-building-aerodynamics.git
      * [new branch]      <new-branch> -> <new-branch>
@@ -46,11 +46,14 @@ that you have finished developing, you have tested that what you have developed
 works and doesn't effect current functionality, and you wish to merge the development
 with a current branch. 
 
+I consider the main production branch to be main
+I consider the main development branch to be pwc_dev1
+
 You should merge to **pwc_dev1**.
 
-Navigate to the link that showed up in the previous step:
+Navigate to:
 
-    https://github.com/SimScaleGmbH/external-building-aerodynamics[...]
+    https://github.com/SimScaleGmbH/external-building-aerodynamics/pull/new/pwc_dev2
 
 There is a button that says create merge request, click it:
 ![image info](./images/commit_documentation_images/merge_request.JPG)
