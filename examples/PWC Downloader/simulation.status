@@ -1,0 +1,25 @@
+{
+    "project_name": "Outdoor Comfort Example",
+    "simulation_name": "Pedestrian Wind Comfort 2",
+    "run_name": "Run 1",
+    "is_result_downloaded": true,
+    "download_paths": {
+        "150.0": "E:/Current Cases/SimScale Objects/examples/PWC Downloader/150.0.csv",
+        "60.0": "E:/Current Cases/SimScale Objects/examples/PWC Downloader/60.0.csv",
+        "0.0": "E:/Current Cases/SimScale Objects/examples/PWC Downloader/0.0.csv",
+        "180.0": "E:/Current Cases/SimScale Objects/examples/PWC Downloader/180.0.csv",
+        "90.0": "E:/Current Cases/SimScale Objects/examples/PWC Downloader/90.0.csv",
+        "30.0": "E:/Current Cases/SimScale Objects/examples/PWC Downloader/30.0.csv",
+        "210.0": "E:/Current Cases/SimScale Objects/examples/PWC Downloader/210.0.csv",
+        "120.0": "E:/Current Cases/SimScale Objects/examples/PWC Downloader/120.0.csv",
+        "240.0": "E:/Current Cases/SimScale Objects/examples/PWC Downloader/240.0.csv",
+        "330.0": "E:/Current Cases/SimScale Objects/examples/PWC Downloader/330.0.csv",
+        "270.0": "E:/Current Cases/SimScale Objects/examples/PWC Downloader/270.0.csv",
+        "300.0": "E:/Current Cases/SimScale Objects/examples/PWC Downloader/300.0.csv"
+    },
+    "field_paths": {
+        "dimensionless_UMag": "E:/Current Cases/SimScale Objects/examples/PWC Downloader/dimensionless_UMag.result",
+        "dimensionless_GEM": "E:/Current Cases/SimScale Objects/examples/PWC Downloader/dimensionless_GEM.result"
+    },
+    "points_path": "E:/Current Cases/SimScale Objects/examples/PWC Downloader/points.result"
+}
