@@ -9,9 +9,9 @@ The following are the overall requirements. Those topics will be discussed in de
  1. A professional SimScale Account with **Pedestrian Wind Comfort** (PWC) simulation capability
  2. API access, with a valid **API Key**
  3. A SimScale project with PWC results
- 4. Administration privlages on your local PC for installation
+ 4. Administration privileges on your local PC for installation
  5. Python > v3.6
- 6. SimScale External Building Aerodynamics module (Gitlab)
+ 6. SimScale External Building Aerodynamics module (https://github.com/SimScaleGmbH/external-building-aerodynamics)
  7. Rhino > 6.0 + Grasshopper Plugin for Rhino (comes default with Rhino > 6.0)
  8. Ladybug > v1.2.0
 
@@ -20,8 +20,11 @@ The following are the overall requirements. Those topics will be discussed in de
 - You need to be logged in as administrator of your computer during the following installation. Some of these write a path file which will be directly called from the command line, and this is possible only when you are logged in as the administrator.
 
 ## Install Python 3.6 or later
+
 - [Get latest Python3 release](https://www.python.org/downloads/windows/) and install.
-### Following steps are needed for later versions, we noticed this after arround Python 3.8
+
+### Following steps are needed for later versions, we noticed this after around Python 3.8
+
 - Go back to the installer, and start the application
 - Once loaded, choose to modify the installation
 ![image info](./images/grasshopper_documentation_images/python_modify1.png)
@@ -31,7 +34,8 @@ The following are the overall requirements. Those topics will be discussed in de
 ![image info](./images/grasshopper_documentation_images/python_modify3.png)
 
 ## SimScale API - [Reference](https://github.com/SimScaleGmbH/simscale-python-sdk)
-To allow grasshopper to 'talk' to SimScale we need to give it permission. Much like you are expected to log in using a user name and password in SimScale, the SimScale API asks for a **URL** and a **Key**. We can set this in two ways, via a yaml file in your home directory (easiest) or by setting environment variables on your PC (recomended).
+
+To allow grasshopper to 'talk' to SimScale we need to give it permission. Much like you are expected to log in using a user name and password in SimScale, the SimScale API asks for a **URL** and a **Key**. We can set this in two ways, via a yaml file in your home directory (easiest) or by setting environment variables on your PC (recommended).
 
 ### Method 1, YAML file (Easiest)
 
@@ -39,17 +43,18 @@ To allow grasshopper to 'talk' to SimScale we need to give it permission. Much l
 	 `echo %HOME%`
 	The reply will probably be something like 
 	`c:\Users\<your user name>`
- - Copy the file from [here](https://gitlab.com/dlynch1/simscale-external-building-aerodynamics/-/tree/public2/key_file) and place it in the directory echoed in the above step.
+ - Copy the file from [here](https://github.com/SimScaleGmbH/external-building-aerodynamics/tree/master/key_file) and place it in the directory echoed in the above step.
  - Open the file in a text editor and replace the key so it is your key, that was sent to you. 
- ```
+```
 prod_api_keys:
 	SIMSCALE_API_URL: "https://api.simscale.com"
 	SIMSCALE_API_KEY: "Your API Key"
 ```
  - Save and close the file
 
-### Method 2, Environment Variables (Recomended)
-- Set the environment variables: Search for **Advanced System Settings** from your windows menu > Environmental Variables > Add new User Variables as follows. Note: You will receive the API key in a separate mail
+### Method 2, Environment Variables (Recommended)
+
+- Set the environment variables: Search for **Advanced System Settings** from your Windows menu > Environmental Variables > Add new User Variables as follows. Note: You will receive the API key in a separate mail
 
 	| Variable Name | Variable Value |
 	|--|--|
@@ -60,20 +65,19 @@ prod_api_keys:
     `echo %SIMSCALE_API_KEY%`
     If it instead returns `%SIMSCALE_API_KEY%` you should revisit this step.
 
-## SimScale External Building Aerodynamics module - [Gitlab reference](https://gitlab.com/dlynch1/simscale-external-building-aerodynamics/-/tree/pwc_dev1/grasshopper_userdefined_components)
+## SimScale External Building Aerodynamics module - [GitHub reference](https://github.com/SimScaleGmbH/external-building-aerodynamics)
 
- - Follow the procedures [here](https://docs.gitlab.com/ee/user/profile/personal_access_tokens.html#create-a-personal-access-token) to create a personal access token. The token needs to be stored somewhere safe, for instance on a .txt file on your local machine (this works like a password, keep it as safe as one)
  - Install some git client, e.g. [https://desktop.github.com/](https://desktop.github.com/)
  - To install the main module, type the following commands in the **CMD** window.
 
-`Pip install GitPython`
-`pip install wheel`
-`pip install git+https://gitlab.com/dlynch1/simscale-external-building-aerodynamics.git`
-
-   - Since this is a private repo, you will be asked for a username and password. The username is your **Gitlab** username and password is the **personal access token** that was saved earlier
- - You can test the installation by typing `simscale --help` into the **CMD** window, you should see a responce similar to the following:
+```bash
+pip install GitPython wheel
+pip install git+https://github.com/SimScaleGmbH/external-building-aerodynamics.git
 ```
-Usage: simscale [OPTIONS] COMMAND [ARGS]...
+
+- You can test the installation by typing `simscale-eba --help` into the **CMD** window, you should see a response similar to the following:
+```
+Usage: simscale-eba [OPTIONS] COMMAND [ARGS]...
 
 Options:
   --help  Show this message and exit.
@@ -81,7 +85,7 @@ Options:
 Commands:
   cast-ordinate
   cast-speed
-  download_pwc_results
+  download-pwc-results
   get-direction
   set-api-variables
 ```
@@ -91,8 +95,10 @@ Commands:
 
 - Download and install Ladybug from [here](https://www.food4rhino.com/en/app/ladybug-tools)
 - You can refer [here](https://github.com/ladybug-tools/lbt-grasshopper/wiki/1.1-Windows-Installation-Steps) for the installation guide.
+
 ## Getting Started
- - [Here](https://gitlab.com/dlynch1/simscale-external-building-aerodynamics/-/tree/main/examples/Grasshopper%20Example) are some example files, try the simple_result_vis.gh to begin with, this will simply visulise wind speed in rhino.
+
+ - [Here](https://github.com/SimScaleGmbH/external-building-aerodynamics/tree/master/examples/Grasshopper%20Example) are some example files, try the simple_result_vis.gh to begin with, this will simply visualise wind speed in rhino.
  - You can open the buildings.3dm model in rhino
  - Open the simple_result_vis.gh in grasshopper
  - Copy [this](https://www.simscale.com/projects/dlynch/thermal_comfort_test_2/) project into your dashboard
@@ -100,15 +106,14 @@ Commands:
 	 - Change the project name to what you renamed the project with
 	 - Change the Simulation name if needed, UK for example.
 	 - Change the Run name if required, 16 direction for example
-	 - Put a path to somewhere in your computer  you can download results to, we recomend making a new directory for each project. 
+	 - Put a path to somewhere in your computer  you can download results to, we recommend making a new directory for each project. 
 	 - Toggle the **Boolean toggles** to **true**
 
 ## Computing UTCI and extracting results
 
 1. Open Rhino
 2. In the **Command** line (above the toolbar) type **Grasshopper** (GH) to open the plugin.
-3. Open the GH file that was prepared by Darren (SimScale) **simple_humantosky_utci.gh**. You can find this file in the repo in: simscale-external-building-aerodynamics/
-examples/Grasshopper Example
+3. Open the GH file that was prepared by Darren (SimScale) **simple_humantosky_utci.gh**. You can find this file in the repo [Here](https://github.com/SimScaleGmbH/external-building-aerodynamics/tree/master/examples/Grasshopper%20Example)
 
 ![image info](./images/grasshopper_documentation_images/step3.png)
 
