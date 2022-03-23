@@ -54,13 +54,19 @@ def get_speeds(direction, reference_speed, keys):
 
 mySpeedFunc = np.frompyfunc(get_speeds, 3, 1)
 
+#export a readable csv
+points_path = path / "points0.result"
+points = pd.read_feather(points_path)
+points.index = points["index"]
+points[["X", "Y", "Z"]].to_csv(path/"points0.csv")
+
 speeds = {}
 for key in field_paths.keys():
     keys = np.repeat(key, len(epw_directions))
     hc_speeds = np.concatenate(mySpeedFunc(epw_directions, epw_speeds, keys), axis=1)
     speed_matric_path = path/ "speed_matrix_{}.csv".format(key)
     
-    df = pd.DataFrame(hc_speeds)
+    df = pd.DataFrame(hc_speeds, index=points.index)
     df.to_csv(speed_matric_path)
     
 
@@ -69,10 +75,6 @@ print("Time taken to create speed matrix: {}".format(end - start))
 
 ## Validate the results by comparing the direction and speed in the file to the plot
 # Assume just one comfort plot, i.e. use the last hc_speed
-points_path = path / "points0.result"
-points = pd.read_feather(points_path)
-points.index = points["index"]
-
 hour_no = int(np.random.uniform(low=1, high=8760, size=(1))[0])
 print("Reference Speed: {}, Direction: {}".format(epw_speeds[hour_no], epw_directions[hour_no]))
 f, ax = plt.subplots(1,1, sharex=True, sharey=True)
