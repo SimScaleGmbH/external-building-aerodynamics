@@ -21,19 +21,6 @@ Development branches can be created and used. To install a branch in your enviro
 pip install git+https://github.com/SimScaleGmbH/external-building-aerodynamics.git@branch-name
 ```
 
-### Version installation
-
-Versions released for backward compatibility. Two current versions exist:
-
- 1. v0.1.0 The old UTCI workflow
- 2. v0.2.0 The new UTCI workflow and many improvements
-
-See Installation section for taking the latest.
-
-```bash
-pip install git+https://github.com/SimScaleGmbH/external-building-aerodynamics.git@version-name
-```
-
 ## Usage
 
 To import the entire module:
