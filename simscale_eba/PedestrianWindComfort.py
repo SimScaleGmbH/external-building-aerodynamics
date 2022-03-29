@@ -975,7 +975,7 @@ def round_direction(path, direction):
     direction_bin = None
     for i in range(0, len(interval)):
         if i == 0:
-            if direction < interval[i] or direction > interval[-1]:
+            if direction < interval[i] or direction >= interval[-1]:
                 direction_bin = i
                 break
         else:
