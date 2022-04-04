@@ -178,7 +178,6 @@ class pedestrian_wind_comfort_results():
         self.status = stat.simulation_status()
 
         # Check and create API environment
-        sc.check_api(self)
         sc.create_client(self)
 
     def get_pedestrian_wind_comfort(self, project, simulation, run, path=pathlib.Path.cwd()):
