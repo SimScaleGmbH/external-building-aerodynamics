@@ -688,14 +688,18 @@ class pedestrian_wind_comfort_results():
         #Iterate the clustered maps
         for key in field_paths.keys():
             keys = np.repeat(key, len(epw_directions))
+            
             hc_speeds = np.concatenate(mySpeedFunc(epw_directions, epw_speeds, keys), axis=1)
+            
             speed_matric_path = self.result_directory / "speed_matrix_{}.feather".format(key)
             
-            self.hourly_continuous_results[key] 
+            self.hourly_continuous_results[key] = hc_speeds
             
-        #we should really also add this to status, including, period.
-        df = pd.DataFrame(hc_speeds, index=self.coordinates.index)
-        df.reset_index().to_feather(speed_matric_path)
+            #we should really also add this to status, including, period.
+            df = pd.DataFrame(hc_speeds, index=self.coordinates.index)
+            self.hourly_continuous_results[key] = df
+            
+            df.reset_index().to_feather(speed_matric_path)
 
     def _get_no_points(self):
         '''

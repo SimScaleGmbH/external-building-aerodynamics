@@ -30,6 +30,8 @@ epw = hc.HourlyContinuous()
 epw.import_epw(epw_path)
 
 statistics = hc.WeatherStatistics()
+statistics.set_directions(np.arange(0, 360, 10))
+statistics.set_speeds(np.arange(0.5, 16, 1))
 statistics.set_hourly_continuous(epw)
 sim.set_weather_statistics(statistics)
 
