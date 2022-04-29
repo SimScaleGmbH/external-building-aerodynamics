@@ -168,6 +168,7 @@ class pedestrian_wind_comfort_results():
         self.directional_csv_dict = {}
         self.dimensional_results = {}
         self.dimensionless_results = {}
+        self.hourly_continuous_results = {}
         self.coordinates = None
         self.comfort_maps = {}
 
@@ -630,6 +631,71 @@ class pedestrian_wind_comfort_results():
             result_dict[variable].loc[idx].reset_index().to_feather(path)
 
         self.status.write_simulation_status()
+        
+    def _create_hourly_continuous_windspeed(self):
+        '''
+        Take houly continuous (HC) and dimensionless speed, return HC spatial.
+
+        use hourly continuous object to pass the meteological speeds and
+        directions.
+        
+        Use _create_dimensionless_quantities()
+        '''
+        
+        epw_directions = np.array(
+            self.weather_statistics.hourly_continuous._hourly_direction
+            ).astype(float)
+        
+        epw_speeds = np.array(
+            self.weather_statistics.hourly_continuous._hourly_wind_speed
+            ).astype(float)
+        
+        field_paths = self.status.field_paths["dimensionless_UMag"]
+        
+        def get_speeds(direction, reference_speed, keys):
+            '''
+            Take direction, speed and a clustered map key, return speed
+            
+            Based upon meteo data, return a wind speed result from the
+            closed solved wind direction and scaled to the defined speed.
+            
+            A PWC result here may have multiple maps, so we need to 
+            specify which also.
+
+            Parameters
+            ----------
+            direction : float
+                Wind direction as a float in compass angles.
+            reference_speed : float
+                The wind speed at the meteological station.
+            keys : str
+                The comfort map.
+
+            '''
+            
+            field_path = pathlib.Path(field_paths[keys])
+            
+            rounded_direction = round_direction(field_path, direction)
+            
+            field = pd.read_feather(field_path)[str(rounded_direction)]
+            speed = (field * reference_speed).values
+            
+            return np.reshape(speed, (-1, 1))
+        
+        mySpeedFunc = np.frompyfunc(get_speeds, 3, 1)
+        
+        
+        #Iterate the clustered maps
+        for key in field_paths.keys():
+            keys = np.repeat(key, len(epw_directions))
+            hc_speeds = np.concatenate(mySpeedFunc(epw_directions, epw_speeds, keys), axis=1)
+            speed_matric_path = self.result_directory / "speed_matrix_{}.feather".format(key)
+            
+            self.hourly_continuous_results[key] 
+            
+        #we should really also add this to status, including, period.
+        df = pd.DataFrame(hc_speeds, index=self.coordinates.index)
+        df.reset_index().to_feather(speed_matric_path)
 
     def _get_no_points(self):
         '''
