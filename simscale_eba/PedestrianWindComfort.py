@@ -170,6 +170,7 @@ class pedestrian_wind_comfort_results():
         self.dimensionless_results = {}
         self.hourly_continuous_results = {}
         self.coordinates = None
+        self.reduced_coordinates = None
         self.comfort_maps = {}
 
         # Weather objects
@@ -483,8 +484,10 @@ class pedestrian_wind_comfort_results():
         else:
             idx = self.coordinates.index
 
-        self.coordinates.loc[idx].reset_index().to_feather(path)
-
+        
+        self.reduced_coordinates = self.coordinates.loc[idx].reset_index()
+        self.reduced_coordinates.to_feather(path)
+        
         self.status.points_path = path.as_posix()
         self.status.write_simulation_status()
 
@@ -557,7 +560,7 @@ class pedestrian_wind_comfort_results():
                 idx = result_dict[variable].index
 
             result_dict[variable].loc[idx].reset_index().to_feather(path)
-
+            
         self.status.write_simulation_status()
 
     def _create_dimensionless_quantities(self, variables=['UMag', 'GEM']):
@@ -915,7 +918,8 @@ class pedestrian_wind_comfort_results():
                                                     - np.mean(voxel_grid[tuple(vox)], axis=0), axis=1).argmin()])
 
             last_seen += nb_pts_per_voxel[idx]
-
+            
+        
         return grid_candidate_center_id
 
     def _cluster_points(self):
