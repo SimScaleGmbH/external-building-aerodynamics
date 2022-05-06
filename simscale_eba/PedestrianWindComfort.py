@@ -17,8 +17,13 @@ import simscale_eba.pwc_status as stat
 
 class pedestrian_wind_comfort_setup():
 
-    def __init__(self):
+    def __init__(self, 
+                 api_key: str = '',
+                 api_url: str = '',
+                 credentials=None):
+        
         self.api_client = None
+        self.credentials = credentials
         self.api_key_header = None
         self.api_key = None
 
@@ -51,11 +56,11 @@ class pedestrian_wind_comfort_setup():
 
         self.wind_standard = None
         self.number_of_directions = None
-
-        self._create_client()
-
-    def _create_client(self):
-        sc.create_client(self)
+        
+        if self.credentials == None:
+            sc.create_client(self,
+                             api_key=api_key,
+                             api_url=api_url)
 
     def get_project(self, project):
         sc.find_project(self, project)
@@ -130,7 +135,7 @@ class pedestrian_wind_comfort_results():
 
     def __init__(self, 
                  api_key: str = '',
-                 api_url: str = '',):
+                 api_url: str = ''):
         
         # The SimScale names
         self.project_name = None
@@ -156,6 +161,7 @@ class pedestrian_wind_comfort_results():
         self.storage_api = None
 
         # SimScale Authentication
+        self.credentials = None
         self.api_client = None
         self.api_key_header = None
         self.api_key = None
@@ -210,7 +216,7 @@ class pedestrian_wind_comfort_results():
             Path to the downloaded results.
         '''
 
-        setup = pedestrian_wind_comfort_setup()
+        setup = pedestrian_wind_comfort_setup(credentials = self.credentials)
         setup.get_project(project)
         setup.get_simulation(simulation)
 
@@ -224,17 +230,17 @@ class pedestrian_wind_comfort_results():
         self.status.result_directory = self.result_directory
 
         self.pedestrian_wind_comfort_setup = setup
-
+        
         self.project_id = setup.project_id
         self.simulation_id = setup.simulation_id
 
         self.project_api = setup.project_api
         self.run_api = setup.run_api
-
+        '''
         self.api_client = setup.api_client
         self.api_key_header = setup.api_key_header
         self.api_key = setup.api_key
-
+        '''
         sc.find_run(self, run)
 
         self.pull_run_results(output_folder=self.result_directory)

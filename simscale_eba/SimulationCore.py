@@ -103,6 +103,7 @@ def create_client(self,
     self.api_client = api_client
     self.api_key_header = api_key_header
     self.api_key = api_key
+    self.credentials = credentials
 
 
 def find_project(self, name):
