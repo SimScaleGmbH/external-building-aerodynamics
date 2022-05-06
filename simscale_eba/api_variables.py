@@ -110,10 +110,13 @@ class SimscaleCredentials():
         None.
 
         '''
+        print(self.api_key, self.api_url)
         if (not self.api_key) and (not self.api_url):
             return False
+            print(False)
         else:
             return True
+            print(True)
     
     def _is_env_variables_exist(self):
         '''
