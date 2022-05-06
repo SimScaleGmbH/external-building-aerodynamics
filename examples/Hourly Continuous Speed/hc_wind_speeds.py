@@ -15,7 +15,9 @@ run = "Run 1"
 
 path = pathlib.Path("E:\Current Cases\Grasshopper Plugin")
 
-sim = pwc.pedestrian_wind_comfort_results()
+sim = pwc.pedestrian_wind_comfort_results(api_key='your key here',
+                                          api_url='https://api.simscale.com')
+
 sim.set_resolution(resolution)
 sim.get_pedestrian_wind_comfort(project, simulation, run, path=path)
 

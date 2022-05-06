@@ -128,7 +128,10 @@ class pedestrian_wind_comfort_setup():
 
 class pedestrian_wind_comfort_results():
 
-    def __init__(self):
+    def __init__(self, 
+                 api_key: str = '',
+                 api_url: str = '',):
+        
         # The SimScale names
         self.project_name = None
         self.simulation_name = None
@@ -180,7 +183,9 @@ class pedestrian_wind_comfort_results():
         self.status = stat.simulation_status()
 
         # Check and create API environment
-        sc.create_client(self)
+        sc.create_client(self,
+                         api_key=api_key,
+                         api_url=api_url)
 
     def get_pedestrian_wind_comfort(self, project, simulation, run, path=pathlib.Path.cwd()):
         '''

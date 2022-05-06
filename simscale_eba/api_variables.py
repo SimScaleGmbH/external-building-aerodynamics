@@ -7,6 +7,8 @@ import yaml
 class SimscaleCredentials():
 
     def __init__(self,
+                 api_key: str = '',
+                 api_url: str = '',
                  version: str = '/v0',
                  header: str = 'X-API-KEY'):
         '''
@@ -28,8 +30,8 @@ class SimscaleCredentials():
         None.
 
         '''
-        self.api_key = ''
-        self.api_url = ''
+        self.api_key = api_key
+        self.api_url = api_url
 
         self.api_header = 'X-API-KEY'
         self.version = version
@@ -98,7 +100,21 @@ class SimscaleCredentials():
 
         '''
         self.host = self.api_url + self.version
+        
+    def _is_variables_set(self):
+        '''
+        Check if the user explicitly provided variables as a string
 
+        Returns
+        -------
+        None.
+
+        '''
+        if (not self.api_key) and (not self.api_url):
+            return False
+        else:
+            return True
+    
     def _is_env_variables_exist(self):
         '''
         Check to see if Environment Variables have been set
@@ -155,25 +171,27 @@ class SimscaleCredentials():
         None.
 
         '''
-        is_var_inenv = self._is_env_variables_exist()
-        is_var_infile = self._is_file_variables_exist()
-
-        if is_var_infile and not is_var_inenv:
-            print(
-                "SimScale API Key and URL found in the file {}.".format(
-                    pathlib.Path.home() / ".simscale_api_keys.yaml"))
-        elif is_var_inenv and not is_var_infile:
-            print(
-                "SimScale API Key and URL found in the environment variables")
-        elif is_var_inenv and is_var_infile:
-            print(
-                "SimScale API Key and URL found in the file {}".format(
-                    pathlib.Path.home() / ".simscale_api_keys.yaml"),
-                " and in the environment variables, presidence is given to the prior.")
-        else:
-            raise Exception("Could not locate the ariables SIMSCALE_API_KEY",
-                            " or SIMSCALE_API_URL on either file or in the"
-                            " environment")
+        is_var_set = self._is_variables_set()
+        
+        if not is_var_set:
+            is_var_inenv = self._is_env_variables_exist()
+            is_var_infile = self._is_file_variables_exist()
+            if is_var_infile and not is_var_inenv:
+                print(
+                    "SimScale API Key and URL found in the file {}.".format(
+                        pathlib.Path.home() / ".simscale_api_keys.yaml"))
+            elif is_var_inenv and not is_var_infile:
+                print(
+                    "SimScale API Key and URL found in the environment variables")
+            elif is_var_inenv and is_var_infile:
+                print(
+                    "SimScale API Key and URL found in the file {}".format(
+                        pathlib.Path.home() / ".simscale_api_keys.yaml"),
+                    " and in the environment variables, presidence is given to the prior.")
+            else:
+                raise Exception("Could not locate the ariables SIMSCALE_API_KEY",
+                                " or SIMSCALE_API_URL on either file or in the"
+                                " environment")
 
     def set_api_key(self, api_key: str):
         '''
@@ -251,3 +269,16 @@ class SimscaleCredentials():
 
         '''
         return self.host
+    
+    def create_yaml():
+        '''
+        todo
+        
+        Take API key and url, creates a yaml file in home.
+
+        Returns
+        -------
+        None.
+
+        '''
+        pass
