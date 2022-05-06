@@ -156,7 +156,7 @@ class pedestrian_wind_comfort_results():
         self.storage_api = None
 
         # SimScale Authentication
-        self.credentials = None
+        self.credentials = credentials
         self.api_client = None
         self.api_key_header = None
         self.api_key = None
