@@ -3,6 +3,7 @@ import pathlib
 
 import yaml
 
+import simscale_sdk as sim
 
 class SimscaleCredentials():
 
@@ -32,6 +33,8 @@ class SimscaleCredentials():
         '''
         self.api_key = api_key
         self.api_url = api_url
+        
+        self.configuration =None
 
         self.api_header = 'X-API-KEY'
         self.version = version
@@ -157,6 +160,15 @@ class SimscaleCredentials():
             return True
         except:
             return False
+        
+    def _create_configuration(self):
+        configuration = sim.Configuration()
+        configuration.host = self.api_host
+        configuration.api_key = {
+            self.api_key_header: self.api_key,
+        }
+        
+        self.configuration = configuration
 
     def check_variables(self):
         '''
@@ -197,6 +209,8 @@ class SimscaleCredentials():
                 raise Exception("Could not locate the ariables SIMSCALE_API_KEY",
                                 " or SIMSCALE_API_URL on either file or in the"
                                 " environment")
+                
+        self._create_configuration()
 
     def set_api_key(self, api_key: str):
         '''
@@ -274,6 +288,18 @@ class SimscaleCredentials():
 
         '''
         return self.host
+    
+    def get_config(self):
+        '''
+        Get the configuration of the client
+
+        Returns
+        -------
+        TYPE
+            DESCRIPTION.
+
+        '''
+        return self.configuration
     
     def create_yaml():
         '''

@@ -56,6 +56,8 @@ class pedestrian_wind_comfort_setup():
         
         if self.credentials == None:
             sc.create_client(self)
+        else:
+            sc.get_keys_from_client(self)
             
         sc.create_api(self)
 
@@ -186,6 +188,9 @@ class pedestrian_wind_comfort_results():
         # Check and create API environment
         if self.credentials == None:
             sc.create_client(self)
+            
+        else:
+            sc.get_keys_from_client(self)
             
         sc.create_api(self)
 
