@@ -67,9 +67,9 @@ def create_client(self,
         variables.
 
     '''
-    credentials = api.SimscaleCredentials()
-    credentials.check_variables(api_key=api_key,
-                                api_url=api_url)
+    credentials = api.SimscaleCredentials(api_key=api_key, 
+                                          api_url=api_url)
+    credentials.check_variables()
 
     api_key_header = credentials.get_api_header()
     api_key = credentials.get_api_key()
