@@ -17,10 +17,7 @@ import simscale_eba.pwc_status as stat
 
 class pedestrian_wind_comfort_setup():
 
-    def __init__(self, 
-                 api_key: str = '',
-                 api_url: str = '',
-                 credentials=None):
+    def __init__(self, credentials=None):
         
         self.api_client = None
         self.credentials = credentials
@@ -58,9 +55,7 @@ class pedestrian_wind_comfort_setup():
         self.number_of_directions = None
         
         if self.credentials == None:
-            sc.create_client(self,
-                             api_key=api_key,
-                             api_url=api_url)
+            sc.create_client(self)
             
         sc.create_api(self)
 
@@ -135,10 +130,7 @@ class pedestrian_wind_comfort_setup():
 
 class pedestrian_wind_comfort_results():
 
-    def __init__(self, 
-                 api_key: str = '',
-                 api_url: str = '',
-                 credentials=None):
+    def __init__(self, credentials=None):
         
         # The SimScale names
         self.project_name = None
@@ -193,9 +185,7 @@ class pedestrian_wind_comfort_results():
 
         # Check and create API environment
         if self.credentials == None:
-            sc.create_client(self,
-                             api_key=api_key,
-                             api_url=api_url)
+            sc.create_client(self)
             
         sc.create_api(self)
 
