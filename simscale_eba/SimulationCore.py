@@ -76,7 +76,7 @@ def get_keys_from_client(self):
     configuration = self.credentials.get_config()
     
     self.api_client = sim.ApiClient(configuration)
-    self.api_key_header = self.credentials.api_key_header
+    self.api_key_header = self.credentials.api_header
     self.api_key = self.credentials.api_key
 
 def create_api(self):
