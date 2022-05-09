@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 
 import simscale_eba.PedestrianWindComfort as pwc
 import simscale_eba.HourlyContinuous as hc
+import simscale_eba.api_variables as api
 
 import pathlib
 import time
@@ -15,8 +16,13 @@ run = "Run 1"
 
 path = pathlib.Path("E:\Current Cases\Grasshopper Plugin")
 
-sim = pwc.pedestrian_wind_comfort_results(api_key='your key here',
-                                          api_url='https://api.simscale.com')
+credentials = api.SimscaleCredentials(api_key='02c2cd8b-f95e-46ee-8957-6c15c2361e7a',
+                                      api_url='https://api.simscale.com'
+                                      )
+credentials._get_api_host()
+credentials._create_configuration()
+
+sim = pwc.pedestrian_wind_comfort_results(credentials=credentials)
 
 sim.set_resolution(resolution)
 sim.get_pedestrian_wind_comfort(project, simulation, run, path=path)

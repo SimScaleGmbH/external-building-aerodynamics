@@ -218,7 +218,7 @@ class pedestrian_wind_comfort_results():
         '''
 
         setup = pedestrian_wind_comfort_setup(credentials=self.credentials)
-        print(self.api_key)
+        
         setup.get_project(project)
         setup.get_simulation(simulation)
 
