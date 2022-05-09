@@ -46,15 +46,6 @@ def create_client(self, version=0):
     
     Returns
     -------
-    project_api : object
-        An API object that can be querying and creating SimScale 
-        projects.
-    simulation_api : object
-        An API object that can be used for querying and creating 
-        SimScale simulations.
-    simulation_run_api : object
-        An API object that can be querying and creating SimScale 
-        simulation runs.
     api_client : object
         An API client that represents the user, and their login 
         credentials.
@@ -62,6 +53,8 @@ def create_client(self, version=0):
     api_key : string
         A string that is your API key, read from the environment 
         variables.
+    credential : SimscaleCredentials object
+        An object contain api keys and credential information
 
     '''
     credentials = api.SimscaleCredentials()
@@ -69,24 +62,32 @@ def create_client(self, version=0):
 
     api_key_header = credentials.get_api_header()
     api_key = credentials.get_api_key()
-    api_host = credentials.get_api_host()
-
-    configuration = sim.Configuration()
-    configuration.host = api_host
-    configuration.api_key = {
-        api_key_header: api_key,
-    }
+    
+    configuration = credentials.get_config()
 
     api_client = sim.ApiClient(configuration)
+    
+    self.api_client = api_client
+    self.api_key_header = api_key_header
+    self.api_key = api_key
+    self.credentials = credentials
 
+def get_keys_from_client(self):
+    configuration = self.credentials.get_config()
+    
+    self.api_client = sim.ApiClient(configuration)
+    self.api_key_header = self.credentials.api_header
+    self.api_key = self.credentials.api_key
+
+def create_api(self):
     # API clients, needed to find project, simulation and run
-    project_api = sim.ProjectsApi(api_client)
-    simulation_api = sim.SimulationsApi(api_client)
-    simulation_run_api = sim.SimulationRunsApi(api_client)
-    geometry_api = sim.GeometriesApi(api_client)
-    storage_api = sim.StorageApi(api_client)
-    geometry_import_api = sim.GeometryImportsApi((api_client))
-    table_import_api = sim.TableImportsApi(api_client)
+    project_api = sim.ProjectsApi(self.api_client)
+    simulation_api = sim.SimulationsApi(self.api_client)
+    simulation_run_api = sim.SimulationRunsApi(self.api_client)
+    geometry_api = sim.GeometriesApi(self.api_client)
+    storage_api = sim.StorageApi(self.api_client)
+    geometry_import_api = sim.GeometryImportsApi((self.api_client))
+    table_import_api = sim.TableImportsApi(self.api_client)
 
     self.project_api = project_api
     self.simulation_api = simulation_api
@@ -95,11 +96,7 @@ def create_client(self, version=0):
     self.geometry_import_api = geometry_import_api
     self.storage_api = storage_api
     self.table_import_api = table_import_api
-
-    self.api_client = api_client
-    self.api_key_header = api_key_header
-    self.api_key = api_key
-
+    
 
 def find_project(self, name):
     '''
