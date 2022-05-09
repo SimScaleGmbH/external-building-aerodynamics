@@ -113,13 +113,10 @@ class SimscaleCredentials():
         None.
 
         '''
-        print(self.api_key, self.api_url)
         if (not self.api_key) and (not self.api_url):
-            print(False)
             return False
             
         else:
-            print(True)
             return True
             
     
