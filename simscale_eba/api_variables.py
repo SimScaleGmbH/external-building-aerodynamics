@@ -163,7 +163,7 @@ class SimscaleCredentials():
         
     def _create_configuration(self):
         configuration = sim.Configuration()
-        configuration.host = self.api_host
+        configuration.host = self.host
         configuration.api_key = {
             self.api_key_header: self.api_key,
         }
