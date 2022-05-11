@@ -440,5 +440,11 @@ def case_to_stl(input_path, output_path=pathlib.Path.cwd()):
                 writer.Write()
                 break
             
+        return filename
+            
+    stl_path_dict = {}
     for key in export_dict:
-        get_block(export_dict[key], key)
+        path = get_block(export_dict[key], key)
+        stl_path_dict[key] = path
+        
+    return stl_path_dict

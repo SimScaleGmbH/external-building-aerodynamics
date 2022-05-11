@@ -303,9 +303,8 @@ class pedestrian_wind_comfort_results():
         
         #Only export the STL again if its new or different
         if not self.status.check_simulation_status():
-            sc.case_to_stl(
-                stl_input_file,
-                output)
+            stl_dict = sc.case_to_stl(stl_input_file, output)
+            self.status.output_stl_paths = stl_dict
         
         #After all processes remove original data
         if cleanup:
