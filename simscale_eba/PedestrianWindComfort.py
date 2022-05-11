@@ -271,6 +271,7 @@ class pedestrian_wind_comfort_results():
 
         csv_list = {}
         for key in dict_:
+            #Only download new results if they are new or different
             if not self.status.check_simulation_status():
                 case_file_path = self.download_average_direction_result(
                     direction=key, path=self.result_directory)
@@ -300,9 +301,11 @@ class pedestrian_wind_comfort_results():
                                              path=self.result_directory
                                         ).name).as_posix()
         
-        sc.case_to_stl(
-            stl_input_file,
-            output)
+        #Only export the STL again if its new or different
+        if not self.status.check_simulation_status():
+            sc.case_to_stl(
+                stl_input_file,
+                output)
         
         #After all processes remove original data
         if cleanup:
