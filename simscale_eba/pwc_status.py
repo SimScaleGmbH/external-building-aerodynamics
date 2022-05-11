@@ -5,7 +5,7 @@ import pathlib
 class simulation_status():
 
     def __init__(self):
-        self.file_name = "simulation.status"
+        self.file_name = "simulation.json"
         self.result_directory = None
 
         self.project_name = None
@@ -29,8 +29,8 @@ class simulation_status():
         self.result_directory = pathlib.Path(path)
 
         if ((self.result_directory.stem == "simulation")
-                and (self.result_directory.suffix == ".status")):
-            raise Exception("Path provided was to the simulation.status file,"
+                and (self.result_directory.suffix == ".json")):
+            raise Exception("Path provided was to the simulation.json file,"
                             " Should however be the directory it is stored in")
 
     def check_simulation_status(self):
@@ -124,7 +124,7 @@ class simulation_status():
 
         json_object = json.dumps(json_dictionary, indent=4)
 
-        json_path = self.result_directory / "simulation.status"
+        json_path = self.result_directory / "simulation.json"
 
         with open(json_path, "w") as outfile:
             outfile.write(json_object)
