@@ -291,7 +291,7 @@ class pedestrian_wind_comfort_results():
         
         #Just export the first file, caveate is that floor geom changes
         #per direction
-        first_key = dict_.keys()[0]
+        first_key = list(dict_.keys())[0]
         stl_input_file = output.joinpath(key, 
                                          self.download_average_direction_result(
                                              direction=first_key, 
