@@ -101,7 +101,7 @@ Commands:
  - [Here](https://github.com/SimScaleGmbH/external-building-aerodynamics/tree/master/examples/Grasshopper%20Example) are some example files, try the simple_result_vis.gh to begin with, this will simply visualise wind speed in rhino.
  - You can open the buildings.3dm model in rhino
  - Open the simple_result_vis.gh in grasshopper
- - Copy [this](https://www.simscale.com/projects/dlynch/thermal_comfort_test_2/) project into your dashboard
+ - Copy [this](https://www.simscale.com/projects/dlynch_api/outdoor_comfort_example_1/) project into your dashboard
  - In the Download component:
 	 - Change the project name to what you renamed the project with
 	 - Change the Simulation name if needed, UK for example.
