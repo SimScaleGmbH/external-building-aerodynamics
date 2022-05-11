@@ -18,6 +18,7 @@ class simulation_status():
         self.download_paths = None
         self.field_paths = None
         self.points_path = None
+        self.output_stl_paths = None
 
     def set_simulation(self, project, simulation, run):
         self.project_name = project
@@ -37,7 +38,7 @@ class simulation_status():
             raise Exception("No path was provided, cannot read status")
 
         json_path = self.result_directory / self.file_name
-        print(json_path)
+        
         signal = None
         try:
 
@@ -58,7 +59,7 @@ class simulation_status():
                 print("Results downloaded dont match")
                 signal = False
         except:
-            print("No results exist")
+            print("No results exist locally, downloading now...")
             signal = False
 
         return signal
@@ -91,6 +92,7 @@ class simulation_status():
         self.download_paths = read_dict["download_paths"]
         self.field_paths = read_dict["field_paths"]
         self.points_path = read_dict["points_path"]
+        self.output_stl_paths = read_dict["output_stl_paths"]
 
     def write_simulation_status(self, boolean=None):
         '''
@@ -116,7 +118,8 @@ class simulation_status():
             "minimum_resolution": self.minimum_resolution,
             "download_paths": self.download_paths,
             "field_paths": self.field_paths,
-            "points_path": self.points_path
+            "points_path": self.points_path,
+            "output_stl_paths": self.output_stl_paths
         }
 
         json_object = json.dumps(json_dictionary, indent=4)

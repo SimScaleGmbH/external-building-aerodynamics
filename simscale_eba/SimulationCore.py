@@ -372,3 +372,78 @@ def case_to_csv(inputPath, output_file=pathlib.Path.cwd()):
     export_df = export_df.reset_index(drop=True)
 
     export_df.to_csv(output_file)
+
+def case_to_stl(input_path, output_path=pathlib.Path.cwd()):
+    '''
+    Take a .case file, exports .STL files
+    
+    There are several STL's that are exported:
+        1. Geometry: The teselated geometry used by the solver
+        2. Tree: The tesselated geometry used for the tree objects
+        3. Floor: The lowest surface considered in the simulation, if
+           no topology is pressent, this is the ground also.
+        4. Pedestrian Level: The original STL file that results colour
+
+    Parameters
+    ----------
+    inputPath : str
+        the .case file to read.
+    output_path : str, optional
+        The path to export the STL files to. 
+        
+        The default is pathlib.Path.cwd().
+
+    Returns
+    -------
+    None.
+
+    '''
+    #Mapping of user names, to .case file block names
+    export_dict = {'Geometry' : "group-all-volumes", 
+                  'Tree' : "Tree",
+                  'Floor' : 'noSlipBoxVolume-ZMIN',
+                  'Pedestrian Level' : 'data - wind_comfort_surface'}
+    
+    output_path = pathlib.Path(output_path)
+
+    input_path = pathlib.Path(input_path)
+
+    case = vtk.vtkEnSightGoldBinaryReader()
+    case.SetCaseFileName(input_path.as_posix())
+    case.Update()
+
+    data = case.GetOutput()
+    
+    number_of_blocks = data.GetNumberOfBlocks()
+    
+    def get_block(block_name_keyword, export_name, output_path):
+        filename = output_path / '{}.stl'.format(export_name)
+        for i in range(number_of_blocks):
+            block_name = data.GetMetaData(i).Get(vtk.vtkCompositeDataSet.NAME())
+            if block_name_keyword in block_name:
+                
+                unstruct_grid = data.GetBlock(i)
+                
+                #Example here: https://gist.github.com/thewtex/8263132
+                #Take the unstructured data, create a surface filter, provide
+                #the unstructured grid
+                surface_filter = vtk.vtkDataSetSurfaceFilter()
+                surface_filter.SetInputData(unstruct_grid)
+                
+                triangle_filter = vtk.vtkTriangleFilter()
+                triangle_filter.SetInputConnection(surface_filter.GetOutputPort())
+                
+                writer = vtk.vtkSTLWriter()
+                writer.SetFileName(filename.as_posix())
+                writer.SetInputConnection(triangle_filter.GetOutputPort())
+                writer.Write()
+                break
+            
+        return filename
+            
+    stl_path_dict = {}
+    for key in export_dict:
+        path = get_block(export_dict[key], key, output_path)
+        stl_path_dict[key] = path.as_posix()
+        
+    return stl_path_dict

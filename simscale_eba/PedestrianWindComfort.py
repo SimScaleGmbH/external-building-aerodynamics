@@ -247,7 +247,9 @@ class pedestrian_wind_comfort_results():
 
         self.pull_run_results(output_folder=self.result_directory)
 
-    def pull_run_results(self, output_folder=pathlib.Path.cwd()):
+    def pull_run_results(self, 
+                         output_folder=pathlib.Path.cwd(), 
+                         cleanup=True):
         '''
         
 
@@ -269,15 +271,17 @@ class pedestrian_wind_comfort_results():
 
         csv_list = {}
         for key in dict_:
+            #Only download new results if they are new or different
             if not self.status.check_simulation_status():
                 case_file_path = self.download_average_direction_result(
                     direction=key, path=self.result_directory)
+                
                 sc.case_to_csv(
                     output.joinpath(key, case_file_path.name).as_posix(),
                     output.joinpath(f'{key}.csv').as_posix())
 
                 csv_list[key] = output.joinpath(f'{key}.csv')
-                shutil.rmtree(output.joinpath(key).as_posix(), ignore_errors=True)
+                #shutil.rmtree(output.joinpath(key).as_posix(), ignore_errors=True)
 
                 self.status.update_download_path(
                     key, output.joinpath(f'{key}.csv').as_posix())
@@ -287,7 +291,27 @@ class pedestrian_wind_comfort_results():
                 else:
                     csv_list[key] = pathlib.Path(
                         self.status.download_paths[key])
-
+        
+        #Just export the first file, caveate is that floor geom changes
+        #per direction
+        first_key = list(dict_.keys())[0]
+        stl_input_file = output.joinpath(key, 
+                                         self.download_average_direction_result(
+                                             direction=first_key, 
+                                             path=self.result_directory
+                                        ).name).as_posix()
+        
+        #Only export the STL again if its new or different
+        if not self.status.check_simulation_status():
+            stl_dict = sc.case_to_stl(stl_input_file, output)
+            self.status.output_stl_paths = stl_dict
+        
+        #After all processes remove original data
+        if cleanup:
+            for key in dict_:
+                shutil.rmtree(output.joinpath(key).as_posix(), 
+                              ignore_errors=True)
+                
         self.directional_csv_dict = csv_list
         self.status.write_simulation_status(boolean=True)
 
