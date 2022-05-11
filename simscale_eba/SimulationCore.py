@@ -416,7 +416,8 @@ def case_to_stl(input_path, output_path=pathlib.Path.cwd()):
     
     number_of_blocks = data.GetNumberOfBlocks()
     
-    def get_block(block_name_keyword, export_name):
+    def get_block(block_name_keyword, export_name, output_path):
+        filename = output_path / '{}.stl'.format(export_name)
         for i in range(number_of_blocks):
             block_name = data.GetMetaData(i).Get(vtk.vtkCompositeDataSet.NAME())
             if block_name_keyword in block_name:
@@ -432,8 +433,6 @@ def case_to_stl(input_path, output_path=pathlib.Path.cwd()):
                 triangle_filter = vtk.vtkTriangleFilter()
                 triangle_filter.SetInputConnection(surface_filter.GetOutputPort())
                 
-                filename = output_path / '{}.stl'.format(export_name)
-                
                 writer = vtk.vtkSTLWriter()
                 writer.SetFileName(filename.as_posix())
                 writer.SetInputConnection(triangle_filter.GetOutputPort())
@@ -444,7 +443,7 @@ def case_to_stl(input_path, output_path=pathlib.Path.cwd()):
             
     stl_path_dict = {}
     for key in export_dict:
-        path = get_block(export_dict[key], key)
+        path = get_block(export_dict[key], key, output_path)
         stl_path_dict[key] = path
         
     return stl_path_dict
