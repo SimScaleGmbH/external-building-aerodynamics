@@ -272,6 +272,7 @@ class pedestrian_wind_comfort_results():
             if not self.status.check_simulation_status():
                 case_file_path = self.download_average_direction_result(
                     direction=key, path=self.result_directory)
+                
                 sc.case_to_csv(
                     output.joinpath(key, case_file_path.name).as_posix(),
                     output.joinpath(f'{key}.csv').as_posix())
@@ -287,7 +288,20 @@ class pedestrian_wind_comfort_results():
                 else:
                     csv_list[key] = pathlib.Path(
                         self.status.download_paths[key])
-
+        
+        #Just export the first file, caveate is that floor geom changes
+        #per direction
+        first_key = dict_.keys()[0]
+        stl_input_file = output.joinpath(key, 
+                                         self.download_average_direction_result(
+                                             direction=first_key, 
+                                             path=self.result_directory
+                                        ).name).as_posix()
+        
+        sc.case_to_stl(
+            stl_input_file,
+            output)
+        
         self.directional_csv_dict = csv_list
         self.status.write_simulation_status(boolean=True)
 
