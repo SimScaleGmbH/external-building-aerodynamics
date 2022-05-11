@@ -368,13 +368,13 @@ class pedestrian_wind_comfort_results():
 
         json_object = json.dumps(json_dictionary, indent=4)
 
-        json_path = self.result_directory / "simulation.status"
+        json_path = self.result_directory / "simulation.json"
 
         with open(json_path, "w") as outfile:
             outfile.write(json_object)
 
     def _check_simulation_status(self):
-        json_path = self.result_directory / "simulation.status"
+        json_path = self.result_directory / "simulation.json"
 
         signal = None
         try:
@@ -514,7 +514,7 @@ class pedestrian_wind_comfort_results():
         self.coordinates.columns = columns
 
         path = self.directional_csv_dict[csv_file_key].with_name(
-            "points").with_suffix(".result")
+            "points").with_suffix(".feather")
 
         if self._check_is_reduce_needed():
             idx = self._reduce_resolution_idx()
@@ -539,7 +539,7 @@ class pedestrian_wind_comfort_results():
         The data in the fields will be the variable, in dimensional form.
         
         The save formate is a feather file for fast writing and light 
-        storage, with a custome extension of .result. This should be 
+        storage, with a custome extension of .feather. This should be 
         considered an  formate, the user should output a .csv for exporting.
 
         Parameters
@@ -584,7 +584,7 @@ class pedestrian_wind_comfort_results():
         key = list(self.directional_csv_dict.keys())[0]
         for variable in variables:
             path = self.directional_csv_dict[key].with_name(
-                "dimensional_{}".format(variable)).with_suffix(".result")
+                "dimensional_{}".format(variable)).with_suffix(".feather")
 
             self.dimensional_results[variable] = path
             self.status.update_field_path(variable,
@@ -611,7 +611,7 @@ class pedestrian_wind_comfort_results():
         The data in the fields will be the variable, in dimensional form.
         
         The save formate is a feather file for fast writing and light 
-        storage, with a custome extension of .result. This should be 
+        storage, with a custome extension of .feather. This should be 
         considered an  formate, the user should output a .csv for exporting.
 
         Parameters
@@ -656,7 +656,7 @@ class pedestrian_wind_comfort_results():
         key = list(self.directional_csv_dict.keys())[0]
         for variable in variables:
             path = self.directional_csv_dict[key].with_name(
-                "dimensionless_{}".format(variable)).with_suffix(".result")
+                "dimensionless_{}".format(variable)).with_suffix(".feather")
 
             self.dimensionless_results[variable] = path
             self.status.update_field_path(variable,
@@ -876,7 +876,7 @@ class pedestrian_wind_comfort_results():
                 data=self.comfort_maps[key],
                 columns=["comfort"])
 
-            df.to_feather("comfort_map_{}_{}.result".format(
+            df.to_feather("comfort_map_{}_{}.feather".format(
                 key, self.comfort_criteria.name))
 
     def set_resolution(self, resolution):
@@ -991,7 +991,7 @@ class pedestrian_wind_comfort_results():
             cluster_points = points.iloc[group[1].index]
             cluster_points = cluster_points.reset_index()
 
-            point_cluster_path = points_directory / "points{}.result".format(group[0])
+            point_cluster_path = points_directory / "points{}.feather".format(group[0])
 
             cluster_points.to_feather(point_cluster_path)
             points_path_dict[str(group[0])] = point_cluster_path.as_posix()
@@ -1060,7 +1060,7 @@ def all_equal(iterable):
 
 def to_paraview(path, file):
     data = pd.read_feather(path / file).reset_index(drop=True)
-    points = pd.read_feather(path / "points.result").reset_index(drop=True)
+    points = pd.read_feather(path / "points.feather").reset_index(drop=True)
 
     columns = list(points.columns) + list(data.columns)
 
