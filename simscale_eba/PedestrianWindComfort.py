@@ -247,7 +247,9 @@ class pedestrian_wind_comfort_results():
 
         self.pull_run_results(output_folder=self.result_directory)
 
-    def pull_run_results(self, output_folder=pathlib.Path.cwd()):
+    def pull_run_results(self, 
+                         output_folder=pathlib.Path.cwd(), 
+                         cleanup=True):
         '''
         
 
@@ -278,7 +280,7 @@ class pedestrian_wind_comfort_results():
                     output.joinpath(f'{key}.csv').as_posix())
 
                 csv_list[key] = output.joinpath(f'{key}.csv')
-                shutil.rmtree(output.joinpath(key).as_posix(), ignore_errors=True)
+                #shutil.rmtree(output.joinpath(key).as_posix(), ignore_errors=True)
 
                 self.status.update_download_path(
                     key, output.joinpath(f'{key}.csv').as_posix())
@@ -302,6 +304,12 @@ class pedestrian_wind_comfort_results():
             stl_input_file,
             output)
         
+        #After all processes remove original data
+        if cleanup:
+            for key in dict_:
+                shutil.rmtree(output.joinpath(key).as_posix(), 
+                              ignore_errors=True)
+                
         self.directional_csv_dict = csv_list
         self.status.write_simulation_status(boolean=True)
 
