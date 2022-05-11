@@ -444,6 +444,6 @@ def case_to_stl(input_path, output_path=pathlib.Path.cwd()):
     stl_path_dict = {}
     for key in export_dict:
         path = get_block(export_dict[key], key, output_path)
-        stl_path_dict[key] = path
+        stl_path_dict[key] = path.as_posix()
         
     return stl_path_dict
