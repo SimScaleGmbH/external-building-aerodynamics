@@ -16,7 +16,7 @@ run = "Run 1"
 
 path = pathlib.Path("E:\Current Cases\Grasshopper Plugin")
 
-credentials = api.SimscaleCredentials(api_key='02c2cd8b-f95e-46ee-8957-6c15c2361e7a',
+credentials = api.SimscaleCredentials(api_key='your-key-here',
                                       api_url='https://api.simscale.com'
                                       )
 credentials._get_api_host()
