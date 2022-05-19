@@ -492,7 +492,7 @@ class multi_directional_result():
         simulation_id = self.simulation_id
         run_id = self.run_id
         results = simulation_run_api.get_simulation_run_results(
-            project_id, simulation_id, run_id).embedded
+            project_id, simulation_id, run_id, limit=1000).embedded
 
         direction_dict = {}
 
