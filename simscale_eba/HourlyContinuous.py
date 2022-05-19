@@ -51,6 +51,25 @@ class HourlyContinuous():
         df = df[df['speed'] != 0]
         self.hourly_continuous_df = df
 
+ 
+    def import_hourly_wind_data_from_excel(self, file):
+    
+        df = pd.read_excel(file, index_col='dateAndTime')
+        df = df.get([ 'Speed (m/s)', 'WindDirection(degrees)' ])
+        df.columns = ["speed", "direction"]
+        df.index = pd.to_datetime(df.index, format='%Y-%m-%d_%H:%M')
+        
+        self.hourly_continuous_df = df
+        self._remove_zero_speeds()
+        if "VRB" in df['direction'].values :
+            self._remove_VRB_from_directions()
+    
+    def _remove_VRB_from_directions(self):
+        df = self.hourly_continuous_df
+        df = df[df['direction'] != "VRB"]
+        self.hourly_continuous_df = df
+
+
     def import_city_of_london_historic(self, file):
         df = pd.read_excel(file, index_col='dateAndTime')
         df = df.get(['windSpeed(km/h)', 'windDirection(degEofN)'])
