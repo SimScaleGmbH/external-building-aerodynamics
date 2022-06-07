@@ -622,6 +622,58 @@ class AtmosphericBoundaryLayer():
     convertors
     -------
     '''
+    
+    def get_correction_factor(self, speed, height=10):
+        
+        method = self._velocity_profile_method
+        
+        height = np.array([height])
+        
+        if isinstance(method, str):
+            if method == "EUROCODE":
+                speed_at_height = abl.u_eurocode(
+
+                    self.unit,
+                    self._reference_speed,
+                    self._reference_height,
+                    height,
+                    self._aerodynamic_roughness,
+                    return_without_units=self.return_without_units
+
+                )
+
+            elif method == "LOGLAW":
+                speed_at_height = abl.u_log_law(
+
+                    self.unit,
+                    self._reference_speed,
+                    self._reference_height,
+                    height,
+                    self._aerodynamic_roughness,
+                    return_without_units=self.return_without_units
+
+                )
+
+            elif method == "POWER":
+                speed_at_height = abl.u_power_law(
+
+                    self.unit,
+                    self._reference_speed,
+                    self._reference_height,
+                    height,
+                    self.alpha,
+                    return_without_units=self.return_without_units
+
+                )
+
+            else:
+                raise Exception("{} was not a valid input".format(method))
+                
+        correction_dict = {'Basic wind speed (m/s)': speed,
+                'Wind Speed at Defined Height' : speed_at_height,
+                'Corection factor': speed / speed_at_height}
+                
+        return correction_dict
 
     def to_csv(self, path=pathlib.Path.cwd(), _list=["u", "tke", "omega"]):
         '''

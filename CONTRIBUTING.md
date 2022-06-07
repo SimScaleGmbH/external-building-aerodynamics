@@ -6,7 +6,7 @@ In git bash change directory to where you wish to work from, replacing <location
 
 Clone the repository to the location, replacing <branch-name> with a branch:
 
-    git clone --branch <branch-name> https://github.com/SimScaleGmbH/external-building-aerodynamics.git
+    git clone --branch <branch-name> https://gitlab.com/mdeiri/external-building-aerodynamics-validations.git
 
 alternatively you could remove --branch <branch-name> for the main repo
 
@@ -36,7 +36,7 @@ A message like this should appear:
 
     remote:
     remote: To create a merge request for pwc_dev2, visit:
-    remote:   https://github.com/SimScaleGmbH/external-building-aerodynamics/pull/new/pwc_dev2
+    remote:   https://gitlab.com/mdeiri/external-building-aerodynamics-validations.git/pull/new/pwc_dev2
     remote:
     To https://github.com/SimScaleGmbH/external-building-aerodynamics.git
      * [new branch]      <new-branch> -> <new-branch>
