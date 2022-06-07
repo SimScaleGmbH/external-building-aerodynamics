@@ -627,7 +627,8 @@ class AtmosphericBoundaryLayer():
         
         method = self._velocity_profile_method
         
-        height = np.array([height])
+        height = height * self.unit.meter
+        speed = speed * (self.unit.meter/self.unit.second)
         
         if isinstance(method, str):
             if method == "EUROCODE":
