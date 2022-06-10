@@ -168,7 +168,7 @@ class WindData():
             profile.set_atmospheric_boundary_layer(
                 aerodynamic_roughness=z0,
                 reference_speed=reference_speed,
-                reference_height=10,
+                reference_height=reference_height,
                 method_dict=method_dict)
 
             self.set_atmospheric_boundary_layer(str(_dir), profile)
