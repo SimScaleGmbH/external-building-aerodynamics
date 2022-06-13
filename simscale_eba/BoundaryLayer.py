@@ -670,8 +670,6 @@ class AtmosphericBoundaryLayer():
             else:
                 raise Exception("{} was not a valid input".format(method))
         
-        def cp(u):
-            return 1/(0.5*1.1965*u**2)
         
         
         cor = corrections()
@@ -679,7 +677,7 @@ class AtmosphericBoundaryLayer():
         cor.reference_height = self._reference_height
         cor.correction_speed = speed_at_height
         cor.speed_correction_factor = speed / speed_at_height
-        cor.pressure_correction_factor = cp(speed)/cp(speed_at_height)
+        cor.pressure_correction_factor = speed**2 / speed_at_height**2
                 
         return cor
 
