@@ -46,7 +46,7 @@ line_1 = ax.plot(bl._u, bl._height, linewidth=2.0)
 line_2 = ax.plot(bl._u*correction.speed_correction_factor, bl._height, color='k', linewidth=2.0)
 
 
-ax.set_yticks([correction.reference_height, correction.correction_height], labels=[r"$e_x$", "loooong"])
+ax.set_yticks([correction.reference_height, correction.correction_height], labels=["lol", "loooong"])
 #ax.set_yticks([bl._reference_height, 50], labels=['$e_x$', 'lol'])
 
 ax.set_xlabel('Streamwise Speed (m/s)')

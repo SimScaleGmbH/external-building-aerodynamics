@@ -28,23 +28,23 @@ class AtmosphericBoundaryLayer():
                  ):
 
         ''' 
+        other set variables
+        -----------------------
+        '''
+        self.return_without_units = return_without_units
+        self.unit = pt.UnitRegistry()
+
+        ''' 
         set reference variables
         -----------------------
         '''
         self.zero_height = zero_height
         self._aerodynamic_roughness = aerodynamic_roughness
         self._blend_aerodynamic_roughness = blend_aerodynamic_roughness
-        self._reference_height = reference_height
-        self._blend_height = blend_height
-        self._reference_speed = reference_speed
+        self._reference_height = reference_height * self.unit.meter
+        self._blend_height = blend_height * self.unit.meter
+        self._reference_speed = reference_speed * (self.unit.meter/self.unit.second)
         self._angle_latitude = angle_latitude
-
-        ''' 
-        other set variables
-        -----------------------
-        '''
-        self.return_without_units = return_without_units
-        self.unit = pt.UnitRegistry()
 
         ''' 
         calculated reference variables
