@@ -669,10 +669,16 @@ class AtmosphericBoundaryLayer():
 
             else:
                 raise Exception("{} was not a valid input".format(method))
-                
+        
+        def cp(u):
+            return 1/(0.5*1.1965*u**2)
+        
+        p_correction = cp(speed)/cp(speed_at_height)
+        
         correction_dict = {'Basic wind speed (m/s)': speed,
                 'Wind Speed at Defined Height' : speed_at_height,
-                'Corection factor': speed / speed_at_height}
+                'Speed Corection factor': speed / speed_at_height,
+                'Pressure Correction factor': p_correction}
                 
         return correction_dict
 
