@@ -673,14 +673,15 @@ class AtmosphericBoundaryLayer():
         def cp(u):
             return 1/(0.5*1.1965*u**2)
         
-        p_correction = cp(speed)/cp(speed_at_height)
         
-        correction_dict = {'Basic wind speed (m/s)': speed,
-                'Wind Speed at Defined Height' : speed_at_height,
-                'Speed Corection factor': speed / speed_at_height,
-                'Pressure Correction factor': p_correction}
+        cor = corrections()
+        cor.referrence_speed = self._reference_speed
+        cor.reference_height = self._reference_height
+        cor.correction_speed = speed_at_height
+        cor.speed_correction_factor = speed / speed_at_height
+        cor.pressure_correction_factor = cp(speed)/cp(speed_at_height)
                 
-        return correction_dict
+        return cor
 
     def to_csv(self, path=pathlib.Path.cwd(), _list=["u", "tke", "omega"]):
         '''
@@ -764,3 +765,15 @@ class AtmosphericBoundaryLayer():
     ---
     End
     '''
+class corrections():
+    
+    def __init__(self):
+        
+        self.reference_height = None
+        self.correction_height = None
+        
+        self.referrence_speed = None
+        self.correction_speed = None
+        
+        self.speed_correction_factor = None
+        self.pressure_correction_factor = None
