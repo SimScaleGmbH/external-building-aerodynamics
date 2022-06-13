@@ -33,7 +33,7 @@ bl.set_atmospheric_boundary_layer(aerodynamic_roughness=0.03,
                                   )
 
 #correction_dict = bl.get_correction_factor(speed=weather_stats.extreeme_speed)
-correction = bl.get_correction_factor(speed=36, height=10)
+correction = bl.get_correction_factor(speed=36, height=20)
 print("Correction factor from reference height and speed is {}".format(correction.speed_correction_factor))
 print("Correction factor from reference height and pressure is {}".format(correction.pressure_correction_factor))
 
@@ -46,7 +46,7 @@ line_1 = ax.plot(bl._u, bl._height, linewidth=2.0)
 line_2 = ax.plot(bl._u*correction.speed_correction_factor, bl._height, color='k', linewidth=2.0)
 
 
-ax.set_yticks([bl._reference_height, 0.8], labels=["short", "loooong"])
+ax.set_yticks([correction.reference_height, correction.correction_height], labels=[r"$e_x$", "loooong"])
 #ax.set_yticks([bl._reference_height, 50], labels=['$e_x$', 'lol'])
 
 ax.set_xlabel('Streamwise Speed (m/s)')
