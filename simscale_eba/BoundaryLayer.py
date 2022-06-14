@@ -195,8 +195,8 @@ class AtmosphericBoundaryLayer():
 
         '''
         self._aerodynamic_roughness = aerodynamic_roughness
-        self._reference_speed = reference_speed
-        self._reference_height = reference_height
+        self._reference_speed = reference_speed * (self.unit.meter/self.unit.second)
+        self._reference_height = reference_height * self.unit.meter
 
         self.set_u_star()
         self.set_streamwise_speed(method_dict["u"])
