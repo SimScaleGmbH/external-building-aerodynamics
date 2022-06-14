@@ -36,19 +36,22 @@ bl.set_atmospheric_boundary_layer(aerodynamic_roughness=0.03,
 correction = bl.get_correction_factor(speed=36, height=10)
 print("Correction factor from reference height and speed is {}".format(correction.speed_correction_factor))
 print("Correction factor from reference height and pressure is {}".format(correction.pressure_correction_factor))
-
-#import matplotlib.pyplot as plt
-
-
-#fig, ax = plt.subplots()
-
-#line_1 = ax.plot(bl._u, bl._height, linewidth=2.0)
-#line_2 = ax.plot(bl._u*correction.speed_correction_factor, bl._height, color='k', linewidth=2.0)
+print(bl._reference_speed)
+import matplotlib.pyplot as plt
 
 
-#ax.set_yticks([correction.reference_height, correction.correction_height], labels=["lol", "loooong"])
-#ax.set_yticks([bl._reference_height, 50], labels=['$e_x$', 'lol'])
+fig, ax = plt.subplots()
 
-#ax.set_xlabel('Streamwise Speed (m/s)')
-#ax.set_ylabel('Height (m)')
-#ax.set_ylim(0, 100)
+line_1 = ax.plot(bl._u, bl._height, linewidth=2.0)
+line_2 = ax.plot(bl._u*correction.speed_correction_factor, bl._height, color='k', linewidth=2.0)
+
+if correction.reference_height.m == correction.correction_height.m:
+    ax.set_yticks([correction.reference_height.m], labels=[r"$H_{ref}$ = $H_{Correction Height}$" + " = {}".format(str(correction.reference_height))])
+else:
+    ax.set_yticks([correction.reference_height.m, correction.correction_height.m], labels=["$H_{ref}$", "$H_{Correction Height}$"])
+    
+ax.set_xticks([correction.referrence_speed.m, correction.correction_speed.m], labels=["$H_(ref)$", "$H_(Correction Height)$"])
+
+ax.set_xlabel('Streamwise Speed (m/s)')
+ax.set_ylabel('Height (m)')
+ax.set_ylim(0, 100)

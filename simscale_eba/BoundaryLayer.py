@@ -675,7 +675,7 @@ class AtmosphericBoundaryLayer():
         cor = corrections()
         cor.referrence_speed = self._reference_speed
         cor.reference_height = self._reference_height
-        cor.correction_speed = speed_at_height
+        cor.correction_speed = speed
         cor.correction_height = height
         cor.speed_correction_factor = speed / speed_at_height
         cor.pressure_correction_factor = speed**2 / speed_at_height**2
