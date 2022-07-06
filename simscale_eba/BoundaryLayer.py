@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 import pint as pt
 from scipy import optimize
+import matplotlib.pyplot as plt
 
 import simscale_eba.AblProfileFunctions as abl
 
@@ -95,7 +96,12 @@ class AtmosphericBoundaryLayer():
         self._velocity_profile_method = None
         self._intensity_profile_method = None
         self._length_scale_profile_method = None
-
+        
+        ''' 
+        Corrections
+        -----------
+        '''
+        self.correctors = None
         '''
         Initialisation method calls
         ---------------------------
@@ -673,13 +679,14 @@ class AtmosphericBoundaryLayer():
         
         
         cor = corrections()
-        cor.referrence_speed = self._reference_speed
+        cor.reference_speed = self._reference_speed
         cor.reference_height = self._reference_height
         cor.correction_speed = speed
         cor.correction_height = height
         cor.speed_correction_factor = speed / speed_at_height
         cor.pressure_correction_factor = speed**2 / speed_at_height**2
-                
+        
+        self.correctors = cor
         return cor
 
     def to_csv(self, path=pathlib.Path.cwd(), _list=["u", "tke", "omega"]):
@@ -764,6 +771,61 @@ class AtmosphericBoundaryLayer():
     ---
     End
     '''
+    
+    def plot_correction(self):
+        fig, ax = plt.subplots()
+        
+        correction = self.correctors
+        
+        line_1 = ax.plot(self._u, self._height, linewidth=2.0, color='dodgerblue')
+        line_2 = ax.plot(self._u*correction.speed_correction_factor, self._height, color='k', linewidth=2.0)
+
+        if correction.reference_height.m == correction.correction_height.m:
+            ax.set_yticks([correction.reference_height.m], 
+                          labels=[r"$H_{ref}$ = $H_{Correction Height}$" + " = {}".format(
+                              str(correction.reference_height))])
+            
+            #Horizontal lines
+            line_3 = ax.plot([0, np.max([correction.reference_speed.m, correction.correction_speed.m])], 
+                             [correction.reference_height.m, correction.reference_height.m],
+                             color='k', linestyle='--')
+            
+            line_4 = ax.plot([correction.reference_speed.m, correction.reference_speed.m], 
+                             [0, correction.reference_height.m],
+                             color='dodgerblue', linestyle='--')
+            
+            line_5 = ax.plot([correction.correction_speed.m, correction.correction_speed.m], 
+                             [0, correction.correction_height.m],
+                             color='k', linestyle='--')
+        else:
+            ax.set_yticks([correction.reference_height.m, correction.correction_height.m], labels=["$H_{ref}$", "$H_{Correction Height}$"])
+            
+            #Horizontal lines
+            line_3 = ax.plot([0, correction.reference_speed.m], 
+                             [correction.reference_height.m, correction.reference_height.m],
+                             color='dodgerblue', linestyle='--')
+            
+            line_4 = ax.plot([0, correction.correction_speed.m], 
+                             [correction.correction_height.m, correction.correction_height.m],
+                             color='k', linestyle='--')
+            
+            line_5 = ax.plot([correction.reference_speed.m, correction.reference_speed.m], 
+                             [0, correction.reference_height.m],
+                             color='dodgerblue', linestyle='--')
+            
+            line_6 = ax.plot([correction.correction_speed.m, correction.correction_speed.m], 
+                             [0, correction.correction_height.m],
+                             color='k', linestyle='--')
+            
+        ax.set_xticks([correction.reference_speed.m, correction.correction_speed.m], labels=["$U_{ref}$", "$U_{Correction Height}$"])
+
+        ax.set_xlabel('Streamwise Speed (m/s)')
+        ax.set_ylabel('Height (m)')
+        ax.set_ylim(0, 100)
+        ax.set_xlim(left=0)
+        
+        return ax
+        
 class corrections():
     
     def __init__(self):
@@ -771,7 +833,7 @@ class corrections():
         self.reference_height = None
         self.correction_height = None
         
-        self.referrence_speed = None
+        self.reference_speed = None
         self.correction_speed = None
         
         self.speed_correction_factor = None
