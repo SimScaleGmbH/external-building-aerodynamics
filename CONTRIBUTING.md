@@ -36,7 +36,7 @@ A message like this should appear:
 
     remote:
     remote: To create a merge request for pwc_dev2, visit:
-    remote:   https://github.com/SimScaleGmbH/external-building-aerodynamics.git/pull/new/pwc_dev2
+    remote:   https://github.com/SimScaleGmbH/external-building-aerodynamics/pull/new/pwc_dev2
     remote:
     To https://github.com/SimScaleGmbH/external-building-aerodynamics.git
      * [new branch]      <new-branch> -> <new-branch>
