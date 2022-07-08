@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 import pint as pt
 from scipy import optimize
+import matplotlib.pyplot as plt
 
 import simscale_eba.AblProfileFunctions as abl
 
@@ -28,23 +29,23 @@ class AtmosphericBoundaryLayer():
                  ):
 
         ''' 
+        other set variables
+        -----------------------
+        '''
+        self.return_without_units = return_without_units
+        self.unit = pt.UnitRegistry()
+
+        ''' 
         set reference variables
         -----------------------
         '''
         self.zero_height = zero_height
         self._aerodynamic_roughness = aerodynamic_roughness
         self._blend_aerodynamic_roughness = blend_aerodynamic_roughness
-        self._reference_height = reference_height
-        self._blend_height = blend_height
-        self._reference_speed = reference_speed
+        self._reference_height = reference_height * self.unit.meter
+        self._blend_height = blend_height * self.unit.meter
+        self._reference_speed = reference_speed * (self.unit.meter/self.unit.second)
         self._angle_latitude = angle_latitude
-
-        ''' 
-        other set variables
-        -----------------------
-        '''
-        self.return_without_units = return_without_units
-        self.unit = pt.UnitRegistry()
 
         ''' 
         calculated reference variables
@@ -95,7 +96,12 @@ class AtmosphericBoundaryLayer():
         self._velocity_profile_method = None
         self._intensity_profile_method = None
         self._length_scale_profile_method = None
-
+        
+        ''' 
+        Corrections
+        -----------
+        '''
+        self.correctors = None
         '''
         Initialisation method calls
         ---------------------------
@@ -195,8 +201,8 @@ class AtmosphericBoundaryLayer():
 
         '''
         self._aerodynamic_roughness = aerodynamic_roughness
-        self._reference_speed = reference_speed
-        self._reference_height = reference_height
+        self._reference_speed = reference_speed * (self.unit.meter/self.unit.second)
+        self._reference_height = reference_height * self.unit.meter
 
         self.set_u_star()
         self.set_streamwise_speed(method_dict["u"])
@@ -622,6 +628,66 @@ class AtmosphericBoundaryLayer():
     convertors
     -------
     '''
+    
+    def get_correction_factor(self, speed, height=10):
+        
+        method = self._velocity_profile_method
+        
+        height = height * self.unit.meter
+        speed = speed * (self.unit.meter/self.unit.second)
+        
+        if isinstance(method, str):
+            if method == "EUROCODE":
+                speed_at_height = abl.u_eurocode(
+
+                    self.unit,
+                    self._reference_speed,
+                    self._reference_height,
+                    height,
+                    self._aerodynamic_roughness,
+                    return_without_units=self.return_without_units
+
+                )
+
+            elif method == "LOGLAW":
+                speed_at_height = abl.u_log_law(
+
+                    self.unit,
+                    self._reference_speed,
+                    self._reference_height,
+                    height,
+                    self._aerodynamic_roughness,
+                    return_without_units=self.return_without_units
+
+                )
+
+            elif method == "POWER":
+                speed_at_height = abl.u_power_law(
+
+                    self.unit,
+                    self._reference_speed,
+                    self._reference_height,
+                    height,
+                    self.alpha,
+                    return_without_units=self.return_without_units
+
+                )
+
+            else:
+                raise Exception("{} was not a valid input".format(method))
+        
+        
+        
+        cor = corrections()
+        cor.reference_speed = self._reference_speed
+        cor.reference_height = self._reference_height
+        cor.correction_speed = speed
+        cor.correction_height = height
+        cor.speed_correction_factor = speed / speed_at_height
+        cor.pressure_correction_factor = speed**2 / speed_at_height**2
+        
+        self.correctors = cor
+        return cor
 
     def to_csv(self, path=pathlib.Path.cwd(), _list=["u", "tke", "omega"]):
         '''
@@ -705,3 +771,70 @@ class AtmosphericBoundaryLayer():
     ---
     End
     '''
+    
+    def plot_correction(self):
+        fig, ax = plt.subplots()
+        
+        correction = self.correctors
+        
+        line_1 = ax.plot(self._u, self._height, linewidth=2.0, color='dodgerblue')
+        line_2 = ax.plot(self._u*correction.speed_correction_factor, self._height, color='k', linewidth=2.0)
+
+        if correction.reference_height.m == correction.correction_height.m:
+            ax.set_yticks([correction.reference_height.m], 
+                          labels=[r"$H_{ref}$ = $H_{Correction Height}$" + " = {}".format(
+                              str(correction.reference_height))])
+            
+            #Horizontal lines
+            line_3 = ax.plot([0, np.max([correction.reference_speed.m, correction.correction_speed.m])], 
+                             [correction.reference_height.m, correction.reference_height.m],
+                             color='k', linestyle='--')
+            
+            line_4 = ax.plot([correction.reference_speed.m, correction.reference_speed.m], 
+                             [0, correction.reference_height.m],
+                             color='dodgerblue', linestyle='--')
+            
+            line_5 = ax.plot([correction.correction_speed.m, correction.correction_speed.m], 
+                             [0, correction.correction_height.m],
+                             color='k', linestyle='--')
+        else:
+            ax.set_yticks([correction.reference_height.m, correction.correction_height.m], labels=["$H_{ref}$", "$H_{Correction Height}$"])
+            
+            #Horizontal lines
+            line_3 = ax.plot([0, correction.reference_speed.m], 
+                             [correction.reference_height.m, correction.reference_height.m],
+                             color='dodgerblue', linestyle='--')
+            
+            line_4 = ax.plot([0, correction.correction_speed.m], 
+                             [correction.correction_height.m, correction.correction_height.m],
+                             color='k', linestyle='--')
+            
+            line_5 = ax.plot([correction.reference_speed.m, correction.reference_speed.m], 
+                             [0, correction.reference_height.m],
+                             color='dodgerblue', linestyle='--')
+            
+            line_6 = ax.plot([correction.correction_speed.m, correction.correction_speed.m], 
+                             [0, correction.correction_height.m],
+                             color='k', linestyle='--')
+            
+        ax.set_xticks([correction.reference_speed.m, correction.correction_speed.m], labels=["$U_{ref}$", "$U_{Correction Height}$"])
+
+        ax.set_xlabel('Streamwise Speed (m/s)')
+        ax.set_ylabel('Height (m)')
+        ax.set_ylim(0, 100)
+        ax.set_xlim(left=0)
+        
+        return ax
+        
+class corrections():
+    
+    def __init__(self):
+        
+        self.reference_height = None
+        self.correction_height = None
+        
+        self.reference_speed = None
+        self.correction_speed = None
+        
+        self.speed_correction_factor = None
+        self.pressure_correction_factor = None
