@@ -73,3 +73,4 @@ for i in range(0, table.shape[0]):
     bars.append(bar)
 
 ax.legend(bars, labels, loc=5, bbox_to_anchor=(2, 0.5), frameon=False)
+fig.suptitle('This is a somewhat long figure title', fontsize=16, y=1.1, ha='center')

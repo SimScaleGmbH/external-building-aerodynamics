@@ -11,6 +11,7 @@ from datetime import datetime
 import ladybug.epw as epw
 import matplotlib as mpl
 import matplotlib.pyplot as plt
+from matplotlib import cm
 import numpy as np
 import pandas as pd
 from scipy.stats import weibull_min
@@ -651,3 +652,56 @@ class WeatherStatistics():
         plt.xlabel('Reduced variate')
         plt.title('Gumbel Method')
         plt.grid(True)
+
+    def plot_windrose(self):
+        table = self.standard_table.T
+        cum_table = np.cumsum(table.to_numpy(), axis=0)
+
+        fig, ax = plt.subplots(subplot_kw={"projection": "polar"})
+
+        labels = []
+        for i in range(0, len(self.speeds)):
+            if i == 0:
+                labels.append('U < {} m/s'.format(self.speeds[i]))
+            else:
+                labels.append('{} m/s >= U > {} m/s'.format(
+                    self.speeds[i-1], self.speeds[i]))
+
+        offset = np.pi / 2
+        width = (2 * np.pi / table.shape[1])
+        # Specify offset
+        ax.set_theta_offset(offset)
+        ax.set_theta_direction(-1)
+
+        # Set limits for radial (y) axis. The negative lower bound creates the whole in the middle.
+        #ax.set_ylim(0)
+
+        # Remove all spines
+        ax.set_frame_on(False)
+
+        # Remove grid and tick marks
+        ax.xaxis.grid(False)
+        ax.yaxis.grid(False)
+
+        print(type(table.columns.to_numpy()))
+        angles = np.radians(table.columns)
+
+        colors = cm.winter(self.speeds / 10)
+
+        bars = []
+        for i in range(0, table.shape[0]):
+            if i == 0:
+                bar = ax.bar(angles, table.iloc[i, :],
+                              width=width, linewidth=1,
+                              color=colors[i, :], edgecolor="black"
+                              )
+            else:
+                bar = ax.bar(angles, table.iloc[i, :],
+                             width=width, linewidth=1,
+                             color=colors[i, :], edgecolor="black",
+                             bottom=cum_table[i-1, :]
+                             )
+            bars.append(bar)
+
+        ax.legend(bars, labels, loc=5, bbox_to_anchor=(2, 0.5), frameon=False)
+        fig.suptitle('Windrose for period: {}'.format(self.period_name), fontsize=16, y=1.1, ha='center')
