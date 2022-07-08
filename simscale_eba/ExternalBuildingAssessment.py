@@ -49,6 +49,11 @@ class PedestrianComfort():
         self.test_conditions = None
         self.region_of_interest = None
         self.number_of_fluid_passes = 3
+        self.advanced_modelling = None
+        self.surface_roughness = 0
+        self.topological_reference = None
+        
+        self.mesh_fineness = "COARSE" 
 
         self.create_client()
 
@@ -443,12 +448,17 @@ class PedestrianComfort():
                                                                                                   external_flow_domain).geometry_primitive_id
 
     def update_spec_lbm(self, direction):
+
+        #Migrate all of the updating steps into separate functions and do everything to self.simulation_spec
+
         '''
         Update the relevent lbm specs to change the direction.
         
         The updated parts are:
             -Runtime
-            -ABL profile
+            -ABL profile        
+            -Surface roughness
+            -Meshing
 
         Parameters
         ----------
@@ -482,6 +492,11 @@ class PedestrianComfort():
                 unit="s",
             ),
         )
+        #update surface roughness (currently fails due to incomaptible JSON format 07/08/2022)
+        # simulation_spec.model.advanced_modelling = self.advanced_modelling
+        
+        #update mesh settings 
+        self.set_mesh_settings
 
         simulation_spec.model.flow_domain_boundaries = sim.FlowDomainBoundaries(
             xmin=sim.VelocityInletBC(
@@ -594,6 +609,9 @@ class PedestrianComfort():
                 ),
             ),
         )
+
+        # print(self.simulation_spec.model.mesh_settings_new)
+        # print(simulation_spec)
         self.simulation_api.update_simulation(self.project_id, self.simulation_id, simulation_spec)
         self.simulation_spec = simulation_spec
 
@@ -874,6 +892,112 @@ class PedestrianComfort():
 
         '''
         self.test_conditions = WindData
+
+    def set_mesh_fineness(self, fineness): 
+        '''
+        Set the mesh refinement
+        
+
+        Parameters
+        ----------
+        fineness : A string with either one of the following: 
+           VERY_COARSE; COARSE ; MODERATE ; FINE ; VERY_FINE
+        Returns
+        -------
+        None.
+
+        '''
+        self.mesh_fineness = fineness
+        
+    def set_mesh_settings(self): 
+        '''
+        Define the required settings for the mesh.
+        
+        Returns
+        -------
+        None.
+
+        '''
+        self.simulation_spec.model.mesh_settings_new=sim.PacefishAutomesh(
+            type="PACEFISH_AUTOMESH",
+            new_fineness=sim.PacefishFinenessCoarse(
+                type=self.mesh_fineness,
+            ),
+            reference_length_computation=sim.ManualReferenceLength(
+                type="MANUAL_REFERENCE_LENGTH",
+                value=sim.DimensionalLength(value=self.region_of_interest._radius * 2,
+                                            unit="m"
+                                            ),
+    
+            ),
+            primary_topology=sim.BuildingsOfInterest(
+                type="BUILDINGS_OF_INTEREST",
+                topological_reference=sim.TopologicalReference(
+                    entities=[self.building_geom.name],
+                    sets=[],
+                ),
+            ),
+            refinements=[],
+        ),
+        
+    def set_advanced_modelling(self, AdvancedModelling):
+        '''
+        Set advanced modelling concept to the analysis
+        
+
+        Parameters
+        ----------
+        AdvancedModelling : AdvancedModelling object 
+            A class inside the Simscale SDK that allows to set advanced concepts 
+            such as surface_roughness , Porous media, and Rotating zones 
+        Returns
+        -------
+        None.
+
+        '''
+        self.advanced_modelling = AdvancedModelling
+                
+        
+    def set_surface_roughness(self, surface_roughness, name = "ground"):
+        '''
+        Assign surface roughness 
+        
+        Parameters
+        ----------
+        surface_roghness : float 
+        The equivalent sand grain surface roughness value
+        Returns
+        -------
+        None.
+
+        '''
+
+
+        self.surface_roughness = sim.models.surface_roughness.SurfaceRoughness(
+            name = name,
+            surface_roughness = sim.DimensionalLength(value=float(surface_roughness),
+                unit="m"),
+            topological_reference = self.topological_reference)
+        
+        self.advanced_modelling.surface_roughness = self.surface_roughness
+
+
+    def set_topological_reference(self,entities = [], sets = []): 
+        
+        '''
+        Define the topological entity at which the surface roughness would be applied
+
+        Parameters
+        ----------
+        entities: list of type string
+        sets    : list of type string
+
+        Reqiured entities and sets for the identification of the CAD part 
+
+        '''
+        
+        entities = [self.building_geom.name]
+        self.topological_reference =sim.models.topological_reference.TopologicalReference(entities, sets)
 
     def get_geometry_map(self):
         '''
