@@ -7,7 +7,7 @@ import simscale_eba.HourlyContinuous as hc
 epw = hc.HourlyContinuous()
 
 # Put any path here
-path = r'E:\Current Cases\SimScale Objects\examples\epw_to_stat\USA_MA_Boston-Logan.Intl.AP.725090_TMYx.2004-2018.epw'
+path = r'USA_MA_Boston-Logan.Intl.AP.725090_TMYx.2004-2018.epw'
 epw.import_epw(pathlib.Path(path))
 
 weather_stats = hc.WeatherStatistics()
@@ -17,3 +17,4 @@ weather_stats.set_hourly_continuous(epw)
 
 weather_stats.to_stat()
 weather_stats.plot_cumulative_distributions()
+weather_stats.plot_windrose()
