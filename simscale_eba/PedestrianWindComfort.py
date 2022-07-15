@@ -682,13 +682,9 @@ class pedestrian_wind_comfort_results():
         Use _create_dimensionless_quantities()
         '''
         
-        epw_directions = np.array(
-            self.weather_statistics.hourly_continuous._hourly_direction
-            ).astype(float)
+        epw_directions = self.weather_statistics.hourly_continuous._original_df['direction'].to_numpy().astype(float)
         
-        epw_speeds = np.array(
-            self.weather_statistics.hourly_continuous._hourly_wind_speed
-            ).astype(float)
+        epw_speeds = self.weather_statistics.hourly_continuous._original_df['speed'].to_numpy().astype(float)
         
         field_paths = self.status.field_paths["dimensionless_UMag"]
         

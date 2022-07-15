@@ -27,6 +27,7 @@ class HourlyContinuous():
         self._hourly_timestamp = []
 
         self._original_data = None
+        self._original_df = None
 
         self.hourly_continuous_df = None
 
@@ -42,6 +43,7 @@ class HourlyContinuous():
                   pd.DataFrame(self._hourly_wind_speed, columns=["speed"])]
         df = pd.concat(frames, axis=1)
         self.hourly_continuous_df = df.set_index("datetime")
+        self._original_df = self.hourly_continuous_df
         self._remove_zero_speeds()
 
     def import_wrplot_view(self, file):
@@ -61,6 +63,8 @@ class HourlyContinuous():
         df.index = pd.to_datetime(df.index, format='%Y-%m-%d_%H:%M')
         
         self.hourly_continuous_df = df
+        self._original_df = self.hourly_continuous_df
+        
         self._remove_zero_speeds()
         if "VRB" in df['direction'].values :
             self._remove_VRB_from_directions()
@@ -79,8 +83,9 @@ class HourlyContinuous():
 
         # Convert km/h to m/s
         df['speed'] = df['speed'] * (1000 / 3600)
-
+        
         self.hourly_continuous_df = df
+        self._original_df = self.hourly_continuous_df
 
     def set_period(self, period):
         self.weather_period = period
