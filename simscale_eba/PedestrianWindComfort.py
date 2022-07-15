@@ -673,7 +673,7 @@ class pedestrian_wind_comfort_results():
 
         self.status.write_simulation_status()
         
-    def _create_hourly_continuous_windspeed(self):
+    def _create_hourly_continuous_windspeed(self, output_file='feather'):
         '''
         Take houly continuous (HC) and dimensionless speed, return HC spatial.
 
@@ -729,8 +729,6 @@ class pedestrian_wind_comfort_results():
             
             hc_speeds = np.concatenate(mySpeedFunc(epw_directions, epw_speeds, keys), axis=1)
             
-            speed_matric_path = self.result_directory / "speed_matrix_{}.feather".format(key)
-            
             self.hourly_continuous_results[key] = hc_speeds
             
             #we should really also add this to status, including, period.
@@ -743,7 +741,12 @@ class pedestrian_wind_comfort_results():
             df.columns = df.columns.astype("string")
             self.hourly_continuous_results[key] = df
             
-            df.reset_index().to_feather(speed_matric_path)
+            if output_file =='feather':
+                speed_matric_path = self.result_directory / "speed_matrix_{}.feather".format(key)
+                df.reset_index().to_feather(speed_matric_path)
+            else: 
+                speed_matric_path = self.result_directory / "speed_matrix_{}.csv".format(key)
+                df.reset_index().to_csv(speed_matric_path)
             
             names.append(speed_matric_path.stem)
             

@@ -32,7 +32,7 @@ def arrays_to_hc_speeds(path, speeds, directions):
     sim.status = pwc_status
     sim.result_directory = path
     
-    names = sim._create_hourly_continuous_windspeed()
+    names = sim._create_hourly_continuous_windspeed(output_file='csv')
     
     return names
 
@@ -41,4 +41,4 @@ directions = np.random.uniform(low=0, high=360, size=(8760,))
 
 path = pathlib.Path("E:\Current Cases\Grasshopper Plugin")
 
-df = arrays_to_hc_speeds(path, speeds, directions)
+names = arrays_to_hc_speeds(path, speeds, directions)
