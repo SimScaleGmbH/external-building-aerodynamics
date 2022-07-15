@@ -22,7 +22,7 @@ import simscale_eba.pwc_status as stat
     'directions',
     type=list
 )
-def create_speed_matrix(path: str, speeds: str, directions: str):
+def create_speed_matrix(path: str, speeds: list, directions: list):
     path = pathlib.Path(path)
     
     df = pd.DataFrame(np.array([speeds, directions]).T, columns=['speed', 'direction'])
