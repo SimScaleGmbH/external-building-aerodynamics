@@ -15,12 +15,12 @@ import simscale_eba.pwc_status as stat
     type=str
 )
 @click.argument(
-    'speeds',
-    type=list
+    '-speeds',
+    type=float
 )
 @click.argument(
-    'directions',
-    type=list
+    '-directions',
+    type=float
 )
 def create_speed_matrix(path: str, speeds: list, directions: list):
     path = pathlib.Path(path)
