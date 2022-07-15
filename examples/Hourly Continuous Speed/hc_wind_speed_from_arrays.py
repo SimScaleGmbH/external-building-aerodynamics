@@ -13,6 +13,7 @@ def arrays_to_hc_speeds(path, speeds, directions):
     
     epw = hc.HourlyContinuous()
     epw.hourly_continuous_df = df
+    epw._original_df = df
     
     weather_stats = hc.WeatherStatistics()
 
@@ -29,8 +30,9 @@ def arrays_to_hc_speeds(path, speeds, directions):
     sim = pwc.pedestrian_wind_comfort_results()
     sim.set_weather_statistics(weather_stats)
     sim.status = pwc_status
+    sim.result_directory = path
     
-    #sim._create_hourly_continuous_windspeed()
+    sim._create_hourly_continuous_windspeed()
     
     return weather_stats
 

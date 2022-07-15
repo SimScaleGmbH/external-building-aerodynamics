@@ -732,7 +732,12 @@ class pedestrian_wind_comfort_results():
             self.hourly_continuous_results[key] = hc_speeds
             
             #we should really also add this to status, including, period.
-            df = pd.DataFrame(hc_speeds, index=self.reduced_coordinates.index)
+            field_path = pathlib.Path(field_paths[keys])
+            
+            field = pd.read_feather(field_path)
+            index = field.index
+            
+            df = pd.DataFrame(hc_speeds, index=index)
             df.columns = df.columns.astype("string")
             self.hourly_continuous_results[key] = df
             
