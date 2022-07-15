@@ -746,7 +746,8 @@ class pedestrian_wind_comfort_results():
                 df.reset_index().to_feather(speed_matric_path)
             else: 
                 speed_matric_path = self.result_directory / "speed_matrix_{}.csv".format(key)
-                df.reset_index().to_csv(speed_matric_path)
+                df.reset_index(drop=True).to_csv(speed_matric_path, 
+                                                 header=False, index=False)
             
             names.append(speed_matric_path.stem)
             
