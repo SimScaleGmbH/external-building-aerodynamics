@@ -27,6 +27,7 @@ def create_speed_matrix(path: str):
                     data = row
                     
         return data
+    path = pathlib.Path(path)
     
     speeds = read_data(path.as_posix() + r'\speeds.csv')
     directions = read_data(path.as_posix() + r'\directions.csv')
