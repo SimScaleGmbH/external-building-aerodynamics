@@ -12,7 +12,7 @@ import simscale_eba.pwc_status as stat
 
 @click.command("create-speed-matrix")
 @click.argument(
-    '-directions',
+    'path',
     type=str
 )
 def create_speed_matrix(path: str):
