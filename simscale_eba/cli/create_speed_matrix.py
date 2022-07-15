@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 
 import pathlib
+import csv
 
 import simscale_eba.HourlyContinuous as hc
 import simscale_eba.PedestrianWindComfort as pwc
@@ -11,21 +12,28 @@ import simscale_eba.pwc_status as stat
 
 @click.command("create-speed-matrix")
 @click.argument(
-    'path',
+    '-directions',
     type=str
 )
-@click.argument(
-    '-speeds',
-    type=float
-)
-@click.argument(
-    '-directions',
-    type=float
-)
-def create_speed_matrix(path: str, speeds: list, directions: list):
-    path = pathlib.Path(path)
+def create_speed_matrix(path: str):
     
-    df = pd.DataFrame(np.array([speeds, directions]).T, columns=['speed', 'direction'])
+    def read_data(path):
+        with open(path) as speeds:
+            rows = csv.reader(speeds)
+            for row in rows:
+                if len(row)<1:
+                    break
+                else:
+                    data = row
+                    
+        return data
+    
+    speeds = read_data(path.as_posix() + r'\speeds.csv')
+    directions = read_data(path.as_posix() + r'\directions.csv')
+    
+    array = np.array([speeds, directions]).astype(float)
+    
+    df = pd.DataFrame(array.T, columns=['speed', 'direction'])
     
     epw = hc.HourlyContinuous()
     epw.hourly_continuous_df = df
