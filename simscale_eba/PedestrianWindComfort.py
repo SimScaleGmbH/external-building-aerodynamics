@@ -732,7 +732,7 @@ class pedestrian_wind_comfort_results():
             self.hourly_continuous_results[key] = hc_speeds
             
             #we should really also add this to status, including, period.
-            field_path = pathlib.Path(field_paths[keys])
+            field_path = pathlib.Path(field_paths[key])
             
             field = pd.read_feather(field_path)
             index = field.index
