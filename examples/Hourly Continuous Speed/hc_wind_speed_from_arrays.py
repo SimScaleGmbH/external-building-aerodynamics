@@ -32,9 +32,9 @@ def arrays_to_hc_speeds(path, speeds, directions):
     sim.status = pwc_status
     sim.result_directory = path
     
-    sim._create_hourly_continuous_windspeed()
+    names = sim._create_hourly_continuous_windspeed()
     
-    return weather_stats
+    return names
 
 speeds = np.random.uniform(low=0, high=20, size=(8760,))
 directions = np.random.uniform(low=0, high=360, size=(8760,))

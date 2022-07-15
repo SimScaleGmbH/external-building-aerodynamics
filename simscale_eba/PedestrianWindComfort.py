@@ -723,6 +723,7 @@ class pedestrian_wind_comfort_results():
         
         
         #Iterate the clustered maps
+        names = []
         for key in field_paths.keys():
             keys = np.repeat(key, len(epw_directions))
             
@@ -743,6 +744,10 @@ class pedestrian_wind_comfort_results():
             self.hourly_continuous_results[key] = df
             
             df.reset_index().to_feather(speed_matric_path)
+            
+            names.append(speed_matric_path.stem)
+            
+        return names
 
     def _get_no_points(self):
         '''
