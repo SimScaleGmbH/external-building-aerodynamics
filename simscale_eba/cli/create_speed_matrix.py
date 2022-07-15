@@ -1,3 +1,5 @@
+import click
+
 import numpy as np
 import pandas as pd
 
@@ -7,7 +9,21 @@ import simscale_eba.HourlyContinuous as hc
 import simscale_eba.PedestrianWindComfort as pwc
 import simscale_eba.pwc_status as stat
 
-def arrays_to_hc_speeds(path, speeds, directions):
+@click.command("create-speed-matrix")
+@click.argument(
+    'path',
+    type=str
+)
+@click.argument(
+    'speeds',
+    type=list
+)
+@click.argument(
+    'directions',
+    type=list
+)
+def arrays_to_hc_speeds(path: str, speeds: str, directions: str):
+    path = pathlib.Path(path)
     
     df = pd.DataFrame(np.array([speeds, directions]).T, columns=['speed', 'direction'])
     
@@ -32,11 +48,4 @@ def arrays_to_hc_speeds(path, speeds, directions):
     
     names = sim._create_hourly_continuous_windspeed(output_file='csv')
     
-    return names
-
-speeds = np.random.uniform(low=0, high=20, size=(8760,))
-directions = np.random.uniform(low=0, high=360, size=(8760,))
-
-path = pathlib.Path("E:\Current Cases\Grasshopper Plugin")
-
-names = arrays_to_hc_speeds(path, speeds, directions)
+    click.echo(names)
