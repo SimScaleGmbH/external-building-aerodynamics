@@ -27,7 +27,7 @@ def arrays_to_hc_speeds(path, speeds, directions):
     pwc_status.set_result_directory(path)
     pwc_status.read_simulation_status()
     
-    sim = pwc.pedestrian_wind_comfort_results()
+    sim = pwc.pedestrian_wind_comfort_results(access_simscale=False)
     sim.set_weather_statistics(weather_stats)
     sim.status = pwc_status
     sim.result_directory = path
