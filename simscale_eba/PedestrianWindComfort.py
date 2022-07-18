@@ -132,7 +132,7 @@ class pedestrian_wind_comfort_setup():
 
 class pedestrian_wind_comfort_results():
 
-    def __init__(self, credentials=None):
+    def __init__(self, credentials=None, access_simscale=True):
         
         # The SimScale names
         self.project_name = None
@@ -184,15 +184,16 @@ class pedestrian_wind_comfort_results():
         self.comfort_criteria = None
 
         self.status = stat.simulation_status()
-
-        # Check and create API environment
-        if self.credentials == None:
-            sc.create_client(self)
+        
+        if access_simscale:
+            # Check and create API environment
+            if self.credentials == None:
+                sc.create_client(self)
+                
+            else:
+                sc.get_keys_from_client(self)
             
-        else:
-            sc.get_keys_from_client(self)
-            
-        sc.create_api(self)
+            sc.create_api(self)
 
     def get_pedestrian_wind_comfort(self, project, simulation, run, path=pathlib.Path.cwd()):
         '''
@@ -672,7 +673,7 @@ class pedestrian_wind_comfort_results():
 
         self.status.write_simulation_status()
         
-    def _create_hourly_continuous_windspeed(self):
+    def _create_hourly_continuous_windspeed(self, output_file='feather'):
         '''
         Take houly continuous (HC) and dimensionless speed, return HC spatial.
 
@@ -682,13 +683,9 @@ class pedestrian_wind_comfort_results():
         Use _create_dimensionless_quantities()
         '''
         
-        epw_directions = np.array(
-            self.weather_statistics.hourly_continuous._hourly_direction
-            ).astype(float)
+        epw_directions = self.weather_statistics.hourly_continuous._original_df['direction'].to_numpy().astype(float)
         
-        epw_speeds = np.array(
-            self.weather_statistics.hourly_continuous._hourly_wind_speed
-            ).astype(float)
+        epw_speeds = self.weather_statistics.hourly_continuous._original_df['speed'].to_numpy().astype(float)
         
         field_paths = self.status.field_paths["dimensionless_UMag"]
         
@@ -726,21 +723,35 @@ class pedestrian_wind_comfort_results():
         
         
         #Iterate the clustered maps
+        names = []
         for key in field_paths.keys():
             keys = np.repeat(key, len(epw_directions))
             
             hc_speeds = np.concatenate(mySpeedFunc(epw_directions, epw_speeds, keys), axis=1)
             
-            speed_matric_path = self.result_directory / "speed_matrix_{}.feather".format(key)
-            
             self.hourly_continuous_results[key] = hc_speeds
             
             #we should really also add this to status, including, period.
-            df = pd.DataFrame(hc_speeds, index=self.reduced_coordinates.index)
+            field_path = pathlib.Path(field_paths[key])
+            
+            field = pd.read_feather(field_path)
+            index = field.index
+            
+            df = pd.DataFrame(hc_speeds, index=index)
             df.columns = df.columns.astype("string")
             self.hourly_continuous_results[key] = df
             
-            df.reset_index().to_feather(speed_matric_path)
+            if output_file =='feather':
+                speed_matric_path = self.result_directory / "speed_matrix_{}.feather".format(key)
+                df.reset_index().to_feather(speed_matric_path)
+            else: 
+                speed_matric_path = self.result_directory / "speed_matrix_{}.csv".format(key)
+                df.reset_index(drop=True).to_csv(speed_matric_path, 
+                                                 header=False, index=False)
+            
+            names.append(speed_matric_path.stem)
+            
+        return names
 
     def _get_no_points(self):
         '''
