@@ -1,4 +1,3 @@
-import os
 import pathlib
 import time
 
@@ -9,7 +8,7 @@ import simscale_eba.SimulationCore as sc
 
 class PedestrianComfort():
 
-    def __init__(self):
+    def __init__(self, credentials=None):
         self.project = None
         self.simulation = None
         self.runs = []
@@ -29,7 +28,8 @@ class PedestrianComfort():
         self.flow_domain_id = None
         self.direction_flow_domain_ids = {}
         self.wind_profile_id = {}
-
+        
+        # SimScale API's
         self.project_api = None
         self.simulation_api = None
         self.run_api = None
@@ -41,7 +41,9 @@ class PedestrianComfort():
         self.vertical_slice = None
         self.grid = {}
         self.plot_ids = []
-
+        
+        # SimScale Authentication
+        self.credentials = credentials
         self.api_client = None
         self.api_key_header = None
         self.api_key = None
@@ -63,8 +65,6 @@ class PedestrianComfort():
             sc.get_keys_from_client(self)
         
         sc.create_api(self)
-
-
 
     def find_project(self, name):
         '''
