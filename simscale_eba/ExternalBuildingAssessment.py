@@ -887,7 +887,8 @@ class PedestrianComfort():
             mesh_geom = maps.embedded[0]
             self.building_geom = mesh_geom
         else:
-            pass
+            mesh_geom = maps.embedded
+            self.building_geom = mesh_geom
 
     def create_vertical_slice(self):
         '''
