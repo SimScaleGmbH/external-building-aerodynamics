@@ -55,106 +55,16 @@ class PedestrianComfort():
         
         self.mesh_fineness = "COARSE" 
 
-        self.create_client()
-
-    def check_api(self):
-        '''
-        Check API key is set, returns boolean True if not set.
-    
-        Raises
-        ------
-        Exception
-            If the API key and URL is not set, rasie an exception.
-    
-        Returns
-        -------
-        is_not_existent : boolean
-            True if not set.
-    
-        '''
-        is_not_existent = not os.getenv("SIMSCALE_API_KEY") or not os.getenv("SIMSCALE_API_URL")
-        if is_not_existent:
-            raise Exception(
-                "Either `SIMSCALE_API_KEY` or `SIMSCALE_API_URL`",
-                " environment variable is missing.")
-            return is_not_existent
+        # Check and create API environment
+        if self.credentials == None:
+            sc.create_client(self)
+            
         else:
-            print("SimScale API Key and URL found in environment variables.")
-
-    def create_client(self, is_debug=False, version=0):
-        '''
-        Reads API key and URL and returns API clients required.
+            sc.get_keys_from_client(self)
         
-        It is recomended to run check_api first.
-            Parameters
-        ----------
-        version : int
-            Version of SimScale API, at time of writing, only 0 is valid.
-            Default is 0.
-        
-        Returns
-        -------
-        project_api : object
-            An API object that can be querying and creating SimScale 
-            projects.
-        simulation_api : object
-            An API object that can be used for querying and creating 
-            SimScale simulations.
-        simulation_run_api : object
-            An API object that can be querying and creating SimScale 
-            simulation runs.
-        api_client : object
-            An API client that represents the user, and their login 
-            credentials.
-        api_key_header : object
-        api_key : string
-            A string that is your API key, read from the environment 
-            variables.
-    
-        '''
+        sc.create_api(self)
 
-        self.check_api()
 
-        versioner = {}
-        versioner['0'] = '/v0'
-
-        try:
-            version = versioner[str(version)]
-        except:
-            print('Version {} does not exist'.format(version))
-
-        api_key_header = 'X-API-KEY'
-        api_key = os.getenv('SIMSCALE_API_KEY')
-
-        configuration = sim.Configuration()
-        configuration.host = os.getenv('SIMSCALE_API_URL') + version
-        configuration.api_key = {
-            api_key_header: api_key,
-        }
-        configuration.debug = is_debug
-
-        api_client = sim.ApiClient(configuration)
-
-        # API clients, needed to find project, simulation and run
-        project_api = sim.ProjectsApi(api_client)
-        simulation_api = sim.SimulationsApi(api_client)
-        simulation_run_api = sim.SimulationRunsApi(api_client)
-        geometry_api = sim.GeometriesApi(api_client)
-        storage_api = sim.StorageApi(api_client)
-        geometry_import_api = sim.GeometryImportsApi((api_client))
-        table_import_api = sim.TableImportsApi(api_client)
-
-        self.project_api = project_api
-        self.simulation_api = simulation_api
-        self.run_api = simulation_run_api
-        self.geometry_api = geometry_api
-        self.geometry_import_api = geometry_import_api
-        self.storage_api = storage_api
-        self.table_import_api = table_import_api
-
-        self.api_client = api_client
-        self.api_key_header = api_key_header
-        self.api_key = api_key
 
     def find_project(self, name):
         '''
