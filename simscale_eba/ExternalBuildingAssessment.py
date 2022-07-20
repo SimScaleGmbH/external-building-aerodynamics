@@ -232,20 +232,7 @@ class PedestrianComfort():
             A simulation object that was matched by the provided name.
     
         '''
-        project_id = self.project_id
-        geometry_api = self.geometry_api
-
-        geometries = geometry_api.get_geometries(project_id).to_dict()['embedded']
-        found = None
-        for geometry in geometries:
-            if geometry['name'] == name:
-                found = geometry
-                print('Geometry found: \n' + str(found['name']))
-                break
-        if found is None:
-            raise Exception('could not find geometry with id: ' + name)
-        self.geometry = found
-        self.geometry_id = found["geometry_id"]
+        sc.find_geometry
 
     def set_region_of_interest(self, roi):
         self.region_of_interest = roi
@@ -282,20 +269,7 @@ class PedestrianComfort():
             A simulation object that was matched by the provided name.
     
         '''
-        project_id = self.project_id
-        simulation_api = self.simulation_api
-
-        simulations = simulation_api.get_simulations(project_id).to_dict()['embedded']
-        found = None
-        for simulation in simulations:
-            if simulation['name'] == name:
-                found = simulation
-                print('Simulation found: \n' + str(found['name']))
-                break
-        if found is None:
-            raise Exception('could not find simulation with id: ' + name)
-        self.simulation = found
-        self.simulation_id = found["simulation_id"]
+        sc.find_simulation(self, name)
 
     def create_setup(self):
         self.create_wind_tunnel()
@@ -876,7 +850,7 @@ class PedestrianComfort():
         self.advanced_modelling.surface_roughness = self.surface_roughness
 
 
-    def set_topological_reference(self,entities = [], sets = []): 
+    def set_topological_reference(self, entities = [], sets = []): 
         
         '''
         Define the topological entity at which the surface roughness would be applied
