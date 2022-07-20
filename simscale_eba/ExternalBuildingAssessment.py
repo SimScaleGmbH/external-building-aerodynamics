@@ -75,9 +75,6 @@ class PedestrianComfort():
         name : string
             The exact name of the project, best copied from the SimScale 
             UI.
-        project_api : object
-            An API object that can be used for querying and creating 
-            SimScale projects.
     
         Raises
         ------
@@ -92,20 +89,7 @@ class PedestrianComfort():
             A simulation object that was matched by the provided name.
     
         '''
-        project_api = self.project_api
-
-        projects = project_api.get_projects().to_dict()['embedded']
-        found = None
-        for project in projects:
-            if project['name'] == name:
-                found = project
-                print('Project found: \n' + str(found['name']))
-                break
-        if found is None:
-            raise Exception('could not find project with name: ' + name)
-
-        self.project_id = found['project_id']
-        self.project = name
+        sc.find_project(self, name)
 
     def create_new_project(self, name, description):
         '''
