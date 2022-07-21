@@ -176,7 +176,7 @@ class PedestrianComfort():
         '''
         self.geometry_name = name
         try:
-            self.find_geometry(name)
+            sc.find_geometry(name)
             print("Cannot upload geometry with the same name, using existing geometry")
         except:
             if path is not None:
@@ -209,30 +209,7 @@ class PedestrianComfort():
                 geometry_import = self.geometry_import_api.get_geometry_import(self.project_id, geometry_import_id)
                 print(f'Geometry import status: {geometry_import.status}')
             self.geometry_id = geometry_import.geometry_id
-
-    def find_geometry(self, name):
-        '''
-        Take a Simulation Name, return a simulation
-    
-        Parameters
-        ----------
-        name : string
-            The exact name of the simulation, best copied from the SimScale 
-            UI.
-    
-        Raises
-        ------
-        Exception
-            Raise exception if the name matches no simulation in the 
-            project.
-    
-        Returns
-        -------
-        found : object
-            A simulation object that was matched by the provided name.
-    
-        '''
-        sc.find_geometry
+        
 
     def set_region_of_interest(self, roi):
         self.region_of_interest = roi
