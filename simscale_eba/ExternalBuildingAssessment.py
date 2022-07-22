@@ -224,7 +224,6 @@ class PedestrianComfort():
         except:
             self.create_spec_lbm(name)
             self.create_setup()
-            self.update_setup()
             
 
     def find_simulation(self, name):
@@ -252,14 +251,14 @@ class PedestrianComfort():
         sc.find_simulation(self, name)
 
     def create_setup(self):
-        self.create_wind_tunnel()
+        direction = list(self.test_conditions._atmospheric_boundary_layers.keys())[0]
+        self.create_wind_tunnel(direction=direction)
         self.simulation = self.simulation_api.create_simulation(self.project_id, self.simulation_spec)
         self.simulation_id = self.simulation.simulation_id
 
-    def update_setup(self):
+    def update_setup(self, direction):
         self.create_wind_tunnel()
         
-        direction = list(self.test_conditions._atmospheric_boundary_layers.keys())[0]
         self.update_spec_lbm(direction)
 
     def create_wind_tunnel(self, direction=0):
