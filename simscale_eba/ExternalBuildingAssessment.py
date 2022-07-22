@@ -241,7 +241,7 @@ class PedestrianComfort():
         self.update_spec_lbm(direction)
 
     def create_wind_tunnel(self, direction=0):
-        self.get_geometry_map()
+        self.get_building_geometry()
 
         external_flow_domain = sim.RotatableCartesianBox(
             name='External Flow Domain',
@@ -828,7 +828,7 @@ class PedestrianComfort():
         entities = self.building_geom
         self.topological_reference =sim.models.topological_reference.TopologicalReference(entities, sets)
 
-    def get_geometry_map(self, layers=None):
+    def get_building_geometry(self, layers=None):
         '''
         get the map of geometry from a CAD.
         
@@ -846,20 +846,30 @@ class PedestrianComfort():
         project_id = self.project_id
         geometry_id = self.geometry_id
         maps = self.geometry_api.get_geometry_mappings(project_id, geometry_id, _class='body',
-                                                       bodies=layers)
+                                                       bodies=[self.geometry_name])
         print(maps)
         if len(maps.embedded) == 1:
+            maps = self.geometry_api.get_geometry_mappings(project_id, geometry_id, _class='body',
+                                                           bodies=layers)
             mesh_geom = maps.embedded[0]
             self.building_geom = mesh_geom.name
         else:
-            mesh_geom = maps.embedded
+            entities = self.get_geometry_from_origin_layer(self, layers)
+            self.building_geom = entities
             
-            buildings = []
-            for entity in mesh_geom:
-                buildings.append(entity.name)
-                
-            self.building_geom = buildings
-
+    def get_geometry_from_origin_layer(self, layers):
+        maps = self.geometry_api.get_geometry_mappings(self.project_id, 
+                                                       self.geometry_id, 
+                                                       _class='body')
+        
+        entities = []
+        for entity in maps:
+            for layer in layers:
+                for attribute in entity.originate_from:
+                    if attribute.body == layer:
+                        entities.append(entity)
+                        
+        return entities
     def create_vertical_slice(self):
         '''
         Creates a vertical slice for assessing the ABL accross the domain
