@@ -847,7 +847,7 @@ class PedestrianComfort():
         geometry_id = self.geometry_id
         maps = self.geometry_api.get_geometry_mappings(project_id, geometry_id, _class='body',
                                                        bodies=[self.geometry_name])
-        print(maps)
+        
         if len(maps.embedded) == 1:
             maps = self.geometry_api.get_geometry_mappings(project_id, geometry_id, _class='body',
                                                            bodies=layers)
@@ -867,7 +867,7 @@ class PedestrianComfort():
             for layer in layers:
                 for attribute in entity.originate_from:
                     if attribute.body == layer:
-                        entities.append(entity)
+                        entities.append(entity.name)
                         
         return entities
     def create_vertical_slice(self):
