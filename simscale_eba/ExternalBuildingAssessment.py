@@ -175,9 +175,9 @@ class PedestrianComfort():
 
         '''
         self.geometry_name = name
-        sc.find_geometry(name)
+        
         try:
-            sc.find_geometry(name)
+            sc.find_geometry(self, name)
             print("Cannot upload geometry with the same name, using existing geometry")
         except:
             if path is not None:
