@@ -678,7 +678,7 @@ class PedestrianComfort():
                 primary_topology=sim.BuildingsOfInterest(
                     type="BUILDINGS_OF_INTEREST",
                     topological_reference=sim.TopologicalReference(
-                        entities=[self.building_geom.name],
+                        entities=self.building_geom,
                         sets=[],
                     ),
                 ),
@@ -779,7 +779,7 @@ class PedestrianComfort():
             primary_topology=sim.BuildingsOfInterest(
                 type="BUILDINGS_OF_INTEREST",
                 topological_reference=sim.TopologicalReference(
-                    entities=[self.building_geom.name],
+                    entities=self.building_geom,
                     sets=[],
                 ),
             ),
@@ -842,7 +842,7 @@ class PedestrianComfort():
 
         '''
         
-        entities = [self.building_geom.name]
+        entities = self.building_geom
         self.topological_reference =sim.models.topological_reference.TopologicalReference(entities, sets)
 
     def get_geometry_map(self):
@@ -863,10 +863,14 @@ class PedestrianComfort():
                                                        bodies=[self.geometry_name])
         if len(maps.embedded) == 1:
             mesh_geom = maps.embedded[0]
-            self.building_geom = mesh_geom
+            self.building_geom = mesh_geom.name
         else:
             mesh_geom = maps.embedded
-            self.building_geom = mesh_geom
+            
+            buildings = []
+            for entity in mesh_geom:
+                buildings.append(entity.name)
+            self.building_geom = buildings
 
     def create_vertical_slice(self):
         '''
