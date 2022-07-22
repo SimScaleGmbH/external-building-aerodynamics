@@ -259,7 +259,7 @@ class PedestrianComfort():
     def update_setup(self):
         self.create_wind_tunnel()
         
-        direction = self.test_conditions._atmospheric_boundary_layers.keys[0]
+        direction = list(self.test_conditions._atmospheric_boundary_layers.keys)[0]
         self.update_spec_lbm(direction)
 
     def create_wind_tunnel(self, direction=0):
