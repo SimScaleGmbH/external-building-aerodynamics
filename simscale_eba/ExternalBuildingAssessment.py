@@ -217,6 +217,7 @@ class PedestrianComfort():
         self.create_vertical_slice()
 
     def create_simulation(self, name):
+        self.update_setup()
         try:
             sc.find_simulation(self, name)
             print("Cannot create simulation with the same name, using existing simulation")
