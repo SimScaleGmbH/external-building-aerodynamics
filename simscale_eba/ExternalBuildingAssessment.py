@@ -863,7 +863,7 @@ class PedestrianComfort():
                                                        _class='body')
         
         entities = []
-        for entity in maps:
+        for entity in maps.embedded:
             for layer in layers:
                 for attribute in entity.originate_from:
                     if attribute.body == layer:
