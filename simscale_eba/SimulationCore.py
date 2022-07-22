@@ -217,6 +217,7 @@ def find_geometry(self, name):
 
     geometries = geometry_api.get_geometries(project_id).to_dict()['embedded']
     found = None
+    
     for geometry in geometries:
         if geometry['name'] == name:
             found = geometry
