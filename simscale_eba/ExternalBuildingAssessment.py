@@ -222,8 +222,9 @@ class PedestrianComfort():
             print("Cannot create simulation with the same name, using existing simulation")
             self.update_setup()
         except:
-            self.create_spec_lbm(name)
             self.create_setup()
+            self.create_spec_lbm(name)
+            
 
     def find_simulation(self, name):
         '''
@@ -476,6 +477,7 @@ class PedestrianComfort():
 
         '''
         self.upload_probe_plots()
+        
         model = sim.IncompressiblePacefish(
             bounding_box_uuid=self.flow_domain_id,
             type="INCOMPRESSIBLE_PACEFISH",
