@@ -222,8 +222,9 @@ class PedestrianComfort():
             print("Cannot create simulation with the same name, using existing simulation")
             self.update_setup()
         except:
-            self.create_setup()
             self.create_spec_lbm(name)
+            self.create_setup()
+            self.update_setup()
             
 
     def find_simulation(self, name):
