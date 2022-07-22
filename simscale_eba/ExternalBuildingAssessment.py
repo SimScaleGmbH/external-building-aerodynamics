@@ -854,7 +854,7 @@ class PedestrianComfort():
             mesh_geom = maps.embedded[0]
             self.building_geom = mesh_geom.name
         else:
-            entities = self.get_geometry_from_origin_layer(self, layers)
+            entities = self.get_geometry_from_origin_layer(layers)
             self.building_geom = entities
             
     def get_geometry_from_origin_layer(self, layers):
