@@ -847,7 +847,7 @@ class PedestrianComfort():
         geometry_id = self.geometry_id
         maps = self.geometry_api.get_geometry_mappings(project_id, geometry_id, _class='body',
                                                        bodies=layers)
-        
+        print(maps)
         if len(maps.embedded) == 1:
             mesh_geom = maps.embedded[0]
             self.building_geom = mesh_geom.name
