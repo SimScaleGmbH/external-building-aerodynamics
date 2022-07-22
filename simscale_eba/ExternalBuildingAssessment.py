@@ -217,38 +217,14 @@ class PedestrianComfort():
         self.create_vertical_slice()
 
     def create_simulation(self, name):
+        sc.find_simulation(self, name)
         try:
-            self.find_simulation(name)
+            sc.find_simulation(self, name)
             print("Cannot create simulation with the same name, using existing simulation")
             self.update_setup()
         except:
             self.create_spec_lbm(name)
             self.create_setup()
-            
-
-    def find_simulation(self, name):
-        '''
-        Take a Simulation Name, return a simulation
-    
-        Parameters
-        ----------
-        name : string
-            The exact name of the simulation, best copied from the SimScale 
-            UI.
-    
-        Raises
-        ------
-        Exception
-            Raise exception if the name matches no simulation in the 
-            project.
-    
-        Returns
-        -------
-        found : object
-            A simulation object that was matched by the provided name.
-    
-        '''
-        sc.find_simulation(self, name)
 
     def create_setup(self):
         direction = list(self.test_conditions._atmospheric_boundary_layers.keys())[0]
