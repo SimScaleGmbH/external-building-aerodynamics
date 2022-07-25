@@ -668,6 +668,7 @@ class PedestrianComfort():
                 refinements=[],
             ),
         )
+        
         simulation_spec = sim.SimulationSpec(name=name, geometry_id=self.geometry_id, model=model)
         self.simulation_spec = simulation_spec
         self.model = model
