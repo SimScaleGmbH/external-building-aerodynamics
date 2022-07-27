@@ -115,7 +115,7 @@ def check_item_has_quantity(item, quantity):
 
 class directional_result():
 
-    def __init__(self):
+    def __init__(self, credentials=None):
         self.name = None
         self.run = None
         self.results = None
@@ -123,7 +123,9 @@ class directional_result():
         self.exported_results_dict = {}
         self.weather_statistics = None
         self.comfort_map = None
-
+        
+        self.credentials = credentials
+        
         self.project_id = None
         self.simulation_id = None
         self.run_id = None
@@ -143,8 +145,14 @@ class directional_result():
         self.api_key_header = None
         self.api_key = None
 
-        sc.check_api(self)
-        sc.create_client(self)
+        # Check and create API environment
+        if self.credentials == None:
+            sc.create_client(self)
+            
+        else:
+            sc.get_keys_from_client(self)
+        
+        sc.create_api(self)
 
     def get_run_from_multi_directional_result(self,
                                               multi_directional_result,

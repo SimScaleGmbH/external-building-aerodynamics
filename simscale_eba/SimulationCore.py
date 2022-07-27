@@ -86,7 +86,7 @@ def create_api(self):
     simulation_run_api = sim.SimulationRunsApi(self.api_client)
     geometry_api = sim.GeometriesApi(self.api_client)
     storage_api = sim.StorageApi(self.api_client)
-    geometry_import_api = sim.GeometryImportsApi((self.api_client))
+    geometry_import_api = sim.GeometryImportsApi(self.api_client)
     table_import_api = sim.TableImportsApi(self.api_client)
 
     self.project_api = project_api
@@ -295,8 +295,7 @@ def import_ladybug_grid(self, path, name):
     df['Z'] = df['Z'].str[:-1].astype(float)
     df = df.rename('P{}'.format)
     self.grid[name] = {}
-    self.grid[name]['data'] = df
-
+    self.grid[name]['data'] = df    
 
 def case_to_csv(inputPath, output_file=pathlib.Path.cwd()):
     """
