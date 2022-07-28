@@ -33,7 +33,7 @@ def check_api(self):
         print("SimScale API Key and URL found in environment variables.")
 
 
-def create_client(self, version=0):
+def create_client(self, version=0, server='prod'):
     '''
     Reads API key and URL and returns API clients required.
     
@@ -57,7 +57,7 @@ def create_client(self, version=0):
         An object contain api keys and credential information
 
     '''
-    credentials = api.SimscaleCredentials()
+    credentials = api.SimscaleCredentials(server=server)
     credentials.check_variables()
 
     api_key_header = credentials.get_api_header()
