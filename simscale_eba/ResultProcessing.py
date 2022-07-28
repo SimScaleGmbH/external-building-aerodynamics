@@ -115,7 +115,7 @@ def check_item_has_quantity(item, quantity):
 
 class directional_result():
 
-    def __init__(self, credentials=None):
+    def __init__(self, credentials=None, server='prod'):
         self.name = None
         self.run = None
         self.results = None
@@ -147,7 +147,7 @@ class directional_result():
 
         # Check and create API environment
         if self.credentials == None:
-            sc.create_client(self)
+            sc.create_client(self, server=server)
             
         else:
             sc.get_keys_from_client(self)
