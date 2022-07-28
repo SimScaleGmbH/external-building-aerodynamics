@@ -61,7 +61,7 @@ class RegionOfInterest():
                 "Wind Tuneel Size '{}' does not exist, use moderate, large or custom".format(self.__tunnel_size))
 
         self._wt_width = 2 * self._radius + 2 * self._S
-        self._wt_length = 2 * self._radius + self._I + O
+        self._wt_length = 2 * self._radius + self._I + self._O
         self._wt_height = self._tallest_building_height + self._H
 
         self._wt_maximum_point = [
