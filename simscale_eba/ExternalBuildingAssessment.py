@@ -2,16 +2,22 @@ import pathlib
 import time
 
 import simscale_sdk as sim
+import pandas as pd
 
 import simscale_eba.SimulationCore as sc
 
 
 class PedestrianComfort():
 
-    def __init__(self, name='PWC', credentials=None):
+    def __init__(self, name='PWC', 
+                 server='prod',
+                 credentials=None, 
+                 run_number=1):
+        self.name = name
+        
         self.project = None
         self.simulation = None
-        self.runs = []
+        self.runs = {}
         self.geometry = None
         self.flow_domain = None
         self.simulation_spec = None
@@ -42,6 +48,7 @@ class PedestrianComfort():
         self.vertical_slice = None
         self.grid = {}
         self.plot_ids = []
+        self.run_number = run_number
         
         # SimScale Authentication
         self.credentials = credentials
@@ -60,7 +67,7 @@ class PedestrianComfort():
 
         # Check and create API environment
         if self.credentials == None:
-            sc.create_client(self)
+            sc.create_client(self, server=server)
             
         else:
             sc.get_keys_from_client(self)
@@ -188,11 +195,10 @@ class PedestrianComfort():
 
     def set_region_of_interest(self, roi):
         self.region_of_interest = roi
-        self.create_vertical_slice()
         
         if self.test_conditions != None:
             for direction in self.test_conditions.directions:
-                self._create_wind_tunnel(self, direction=direction)
+                self._create_wind_tunnel(direction=direction)
         
     def set_wind_conditions(self, WindData):
         '''
@@ -212,32 +218,226 @@ class PedestrianComfort():
         '''
         self.test_conditions = WindData
         
+        self._upload_abl_profiles()
+        
         if self.region_of_interest != None:
             for direction in WindData.directions:
-                self._create_wind_tunnel(self, direction=direction)
+                self._create_wind_tunnel(direction=str(direction))
     
+    def _upload_abl_profiles(self):
+        '''
+        Upload all defined directional abl profiles to the simscale platform
+        
+        This is mainly for internal use
+        
+        Returns
+        -------
+        None.
     
+        '''
+        for key in self.test_conditions._atmospheric_boundary_layers:
+            abl = self.test_conditions._atmospheric_boundary_layers[key]
+            _list = ["u", "tke", "omega"]
+            path = pathlib.Path("{}.csv".format(key))
+            abl.to_csv(path, _list)
+            print(path)
+            inlet_profile_csv_storage = self.storage_api.create_storage()
+            with open(path, 'rb') as file:
+                self.api_client.rest_client.PUT(url=inlet_profile_csv_storage.url,
+                                                headers={'Content-Type': 'application/octet-stream'},
+                                                body=file.read())
     
-    def create_simulation(self, name):
-        try:
-            sc.find_simulation(self, name)
-            print("Cannot create simulation with the same name, using existing simulation")
-            #self.update_setup()
-        except:
-            self.create_spec_lbm(name)
-            #self.create_setup()
+            inlet_profile_csv_storage_id = inlet_profile_csv_storage.storage_id
+            inlet_profile_table_import = sim.TableImportRequest(
+                location=sim.TableImportRequestLocation(inlet_profile_csv_storage_id))
+            inlet_profile_table_import_response = self.table_import_api.import_table(self.project_id,
+                                                                                     inlet_profile_table_import)
+            inlet_profile_table_id = inlet_profile_table_import_response.table_id
+    
+            self.wind_profile_id[key] = inlet_profile_table_id
+    
+    def _init_model(self):
+        
+        model = model_obj()
+        self.simulation_model = model.model
+        
+    def _init_default_wind_tunnel(self):
+        default_direction = list(self.direction_flow_domain_ids.keys())[0]
+        self._set_wind_tunnel(default_direction)
+        
+    def _set_wind_tunnel(self, direction):
+        self.simulation_model.bounding_box_uuid = self.direction_flow_domain_ids[direction]
+        
+        self.simulation_model.\
+        mesh_settings_new.\
+        reference_length_computation = sim.ManualReferenceLength(
+            value=sim.DimensionalTime(
+                value=self.region_of_interest._radius*2, unit="m")
+            )
+        
+        self._create_vertical_slice()
+        
+    def _get_simulation_length(self, number_of_fluid_passes=3, direction=None):
+        if direction == None:
+            direction = list(self.direction_flow_domain_ids.keys())[0]
+        wt_length = self.region_of_interest._wt_length
+        
+        reference_speed = self.test_conditions.reference_speeds[str(direction)].m
+        
+        time = (wt_length/reference_speed)*number_of_fluid_passes
+        
+        return time
+    
+    def _set_simulation_length(self, number_of_fluid_passes):
+        
+        self.simulation_model.\
+            simulation_control.\
+            end_time.\
+            value = self._get_simulation_length(number_of_fluid_passes=\
+                                                    number_of_fluid_passes)
+        
+    def _init_default_wind_abl(self):
+        '''
+        Sets the first region directions abl
+        
+        Returns
+        -------
+        None.
 
-    def create_setup(self):
-        self.create_wind_tunnel()
+        '''
+        direction = list(self.direction_flow_domain_ids.keys())[0]
+            
+        self._set_abl_table(str(direction))
+             
+    def _set_abl_table(self, direction:str):
+        '''
+        Takes a direction, sets it in the boundary condition xmin
+
+        Returns
+        -------
+        None.
+
+        '''
+        #Set velocity
+        self.simulation_model.\
+             flow_domain_boundaries.\
+             xmin.\
+             velocity.\
+             value.value.\
+             table_id = self.wind_profile_id[direction]
+             
+        self.simulation_model.\
+             flow_domain_boundaries.\
+             xmin.\
+             velocity.\
+             value.value.\
+             result_index = [2]
+        
+        #Set TKE
+        self.simulation_model.\
+             flow_domain_boundaries.\
+             xmin.\
+             turbulence_intensity.\
+             value.value.\
+             table_id = self.wind_profile_id[direction]
+             
+        self.simulation_model.\
+             flow_domain_boundaries.\
+             xmin.\
+             turbulence_intensity.\
+             value.value.\
+             result_index = [3]
+        
+        #Set Omega
+        self.simulation_model.\
+             flow_domain_boundaries.\
+             xmin.\
+             dissipation_type.\
+             value.value.\
+             table_id = self.wind_profile_id[direction]
+             
+        self.simulation_model.\
+             flow_domain_boundaries.\
+             xmin.\
+             dissipation_type.\
+             value.value.\
+             result_index = [4]
+        
+    def _create_vertical_slice(self):
+        '''
+        Creates a vertical slice for assessing the ABL accross the domain
+
+        Returns
+        -------
+        None.
+
+        '''
+        X = self.region_of_interest._centre[0]
+        Y = self.region_of_interest._centre[1]
+        Z = self.region_of_interest._ground_height
+
+        reference_point = sim.DimensionalVectorLength(value=sim.DecimalVector(x=X, y=Y, z=Z), unit='m')
+        normal = sim.DimensionalVectorLength(value=sim.DecimalVector(x=0, y=1, z=0), unit='m')
+        geometry_primitive = sim.LocalHalfSpace(name="Vertical Slice",
+                                                reference_point=reference_point,
+                                                normal=normal,
+                                                orientation_reference="FLOW_DOMAIN"
+                                                )
+
+        _slice = self.simulation_api.create_geometry_primitive(self.project_id, geometry_primitive)
+        
+        self.simulation_model.\
+             result_control.\
+             statistical_averaging_result_control.\
+             geometry_primitive_uuids = [_slice.geometry_primitive_id]
+             
+        self.simulation_model.\
+             result_control.\
+             snapshot_result_control.\
+             geometry_primitive_uuids = [_slice.geometry_primitive_id]
+             
+        self.simulation_model.\
+             result_control.\
+             transient_result_control.\
+             geometry_primitive_uuids = [_slice.geometry_primitive_id]
+             
+        self.vertical_slice = _slice.geometry_primitive_id
+    
+    def _create_default_spec(self, fineness = 'COARSE', number_of_fluid_passes=3):
+        self._init_model()
+        self._init_default_wind_tunnel()
+        self._init_default_wind_abl()
+
+        self._get_geometry_map()
+        self._set_buildings_as_mesh_entities()
+        self._set_simulation_length(number_of_fluid_passes=number_of_fluid_passes)
+        self._set_probe_plots()
+        
+        self.set_mesh_fineness(fineness)
+        self.simulation_spec = sim.SimulationSpec(name=self.name, 
+                                                  geometry_id=self.geometry_id, 
+                                                  model=self.simulation_model)        
+    
+    def create_default_simulation(self, fineness = 'COARSE', number_of_fluid_passes=3):
+        
+        self._create_default_spec(fineness=fineness,
+                                  number_of_fluid_passes=number_of_fluid_passes)
+        
         self.simulation = self.simulation_api.create_simulation(self.project_id, self.simulation_spec)
         self.simulation_id = self.simulation.simulation_id
-
-    def update_setup(self):
-        self.create_wind_tunnel()
-        self.update_spec_lbm(0)
+    
+    def create_simulation(self, fineness='COARSE', number_of_fluid_passes=3):
+        try:
+            sc.find_simulation(self, self.name)
+            print("Cannot create simulation with the same name, using existing simulation")
+            self._create_default_spec(fineness=fineness,
+                                      number_of_fluid_passes=number_of_fluid_passes)
+            self._update_spec(self.simulation_spec)
+        except:
+            self.create_default_simulation(fineness=fineness,
+                                           number_of_fluid_passes=number_of_fluid_passes)
 
     def _create_wind_tunnel(self, direction=0):
-        self.get_geometry_map()
 
         external_flow_domain = sim.RotatableCartesianBox(
             name='External Flow Domain',
@@ -261,78 +461,60 @@ class PedestrianComfort():
             ),
 
             rotation_angles=sim.DimensionalVectorAngle(value=sim.DecimalVector(
-                x=0, y=0, z=-90 - int(direction)),
+                x=0, y=0, z=-90 - float(direction)),
                 unit='°'),
         )
         self.flow_domain = external_flow_domain
-        if direction == 0:
-            self.flow_domain_id = (
-                self.simulation_api.create_geometry_primitive(self.project_id,
-                                                              external_flow_domain
-                                                              ).geometry_primitive_id)
             
+        self.direction_flow_domain_ids[
+            direction] = self.simulation_api.create_geometry_primitive(
+                self.project_id,
+                external_flow_domain).geometry_primitive_id
+    
+    def _get_geometry_map(self, names=['BUILDING_OF_INTEREST', 'CONTEXT']):
+        '''
+        get the map of geometry from a CAD.
+        
+        Currently this only supports single layer STL files, but will 
+        be expanded to take many layers conforming to a naming convention.
+
+        Returns
+        -------
+        None.
+
+        '''
+        project_id = self.project_id
+        geometry_id = self.geometry_id
+        maps = self.geometry_api.get_geometry_mappings(project_id, geometry_id, _class='body')
+        
+        if len(maps.embedded) == 1:
+            mesh_geom = maps.embedded[0]
+            self.building_geom = [mesh_geom.name]
         else:
-            self.direction_flow_domain_ids[
-                direction] = self.simulation_api.create_geometry_primitive(
-                    self.project_id,
-                    external_flow_domain).geometry_primitive_id
-
-
-    def _upload_abl_profiles(self):
-        '''
-        Upload all defined directional abl profiles to the simscale platform
+            entities = []
+            for entity in maps.embedded:
+                for attribute in entity.originate_from:
+                    if attribute.body in names:
+                        entities.append(entity.name)
+                        
+            self.building_geom = entities
+            
+    def _set_buildings_as_mesh_entities(self):
         
-        This is mainly for internal use
+        self.simulation_model.\
+            mesh_settings_new.\
+            primary_topology.\
+            topological_reference.\
+            entities = self.building_geom
+                
+    def _update_spec(self, simulation_spec):
+        self.simulation_api.update_simulation(self.project_id, self.simulation_id, simulation_spec)
         
-        Returns
-        -------
-        None.
-
-        '''
-        for key in self.test_conditions._atmospheric_boundary_layers:
-            abl = self.test_conditions._atmospheric_boundary_layers[key]
-            _list = ["u", "tke", "omega"]
-            path = pathlib.Path("{}.csv".format(key))
-            abl.to_csv(path, _list)
-            print(path)
-            inlet_profile_csv_storage = self.storage_api.create_storage()
-            with open(path, 'rb') as file:
-                self.api_client.rest_client.PUT(url=inlet_profile_csv_storage.url,
-                                                headers={'Content-Type': 'application/octet-stream'},
-                                                body=file.read())
-
-            inlet_profile_csv_storage_id = inlet_profile_csv_storage.storage_id
-            inlet_profile_table_import = sim.TableImportRequest(
-                location=sim.TableImportRequestLocation(inlet_profile_csv_storage_id))
-            inlet_profile_table_import_response = self.table_import_api.import_table(self.project_id,
-                                                                                     inlet_profile_table_import)
-            inlet_profile_table_id = inlet_profile_table_import_response.table_id
-
-            self.wind_profile_id[key] = inlet_profile_table_id
-
-    def set_wind_conditions(self, WindData):
-        '''
-        Set a wind condition to the analysis
-        
-
-        Parameters
-        ----------
-        WindData : WindCondition object
-            A wind condition is a collection of ABL profiles for a collection
-            of directions.
-
-        Returns
-        -------
-        None.
-
-        '''
-        self.test_conditions = WindData
-
     def set_mesh_fineness(self, fineness): 
         '''
         Set the mesh refinement
         
-
+        
         Parameters
         ----------
         fineness : A string with either one of the following: 
@@ -342,56 +524,7 @@ class PedestrianComfort():
         None.
 
         '''
-        self.mesh_fineness = fineness
-        
-    def set_mesh_settings(self): 
-        '''
-        Define the required settings for the mesh.
-        
-        Returns
-        -------
-        None.
-
-        '''
-        self.simulation_spec.model.mesh_settings_new=sim.PacefishAutomesh(
-            type="PACEFISH_AUTOMESH",
-            new_fineness=sim.PacefishFinenessCoarse(
-                type=self.mesh_fineness,
-            ),
-            reference_length_computation=sim.ManualReferenceLength(
-                type="MANUAL_REFERENCE_LENGTH",
-                value=sim.DimensionalLength(value=self.region_of_interest._radius * 2,
-                                            unit="m"
-                                            ),
-    
-            ),
-            primary_topology=sim.BuildingsOfInterest(
-                type="BUILDINGS_OF_INTEREST",
-                topological_reference=sim.TopologicalReference(
-                    entities=[self.building_geom.name],
-                    sets=[],
-                ),
-            ),
-            refinements=[],
-        ),
-        
-    def set_advanced_modelling(self, AdvancedModelling):
-        '''
-        Set advanced modelling concept to the analysis
-        
-
-        Parameters
-        ----------
-        AdvancedModelling : AdvancedModelling object 
-            A class inside the Simscale SDK that allows to set advanced concepts 
-            such as surface_roughness , Porous media, and Rotating zones 
-        Returns
-        -------
-        None.
-
-        '''
-        self.advanced_modelling = AdvancedModelling
-                
+        self.simulation_model.mesh_settings_new.new_fineness.type = fineness
         
     def set_surface_roughness(self, surface_roughness, name = "ground"):
         '''
@@ -404,7 +537,7 @@ class PedestrianComfort():
         Returns
         -------
         None.
-
+        
         '''
 
 
@@ -434,54 +567,6 @@ class PedestrianComfort():
         entities = [self.building_geom.name]
         self.topological_reference =sim.models.topological_reference.TopologicalReference(entities, sets)
 
-    def get_geometry_map(self):
-        '''
-        get the map of geometry from a CAD.
-        
-        Currently this only supports single layer STL files, but will 
-        be expanded to take many layers conforming to a naming convention.
-
-        Returns
-        -------
-        None.
-
-        '''
-        project_id = self.project_id
-        geometry_id = self.geometry_id
-        maps = self.geometry_api.get_geometry_mappings(project_id, geometry_id, _class='body',
-                                                       bodies=[self.geometry_name])
-        if len(maps.embedded) == 1:
-            mesh_geom = maps.embedded[0]
-            self.building_geom = mesh_geom
-        else:
-            mesh_geom = maps.embedded
-            self.building_geom = mesh_geom
-
-    def create_vertical_slice(self):
-        '''
-        Creates a vertical slice for assessing the ABL accross the domain
-
-        Returns
-        -------
-        None.
-
-        '''
-        X = self.region_of_interest._centre[0]
-        Y = self.region_of_interest._centre[1]
-        Z = self.region_of_interest._ground_height
-
-        reference_point = sim.DimensionalVectorLength(value=sim.DecimalVector(x=X, y=Y, z=Z), unit='m')
-        normal = sim.DimensionalVectorLength(value=sim.DecimalVector(x=0, y=1, z=0), unit='m')
-        geometry_primitive = sim.LocalHalfSpace(name="Vertical Slice",
-                                                reference_point=reference_point,
-                                                normal=normal,
-                                                orientation_reference="FLOW_DOMAIN"
-                                                )
-
-        _slice = self.simulation_api.create_geometry_primitive(self.project_id, geometry_primitive)
-
-        self.vertical_slice = _slice.geometry_primitive_id
-
     def import_ladybug_grid(self, path, name):
         '''
         Imports a point grid from ladybug tools.
@@ -504,6 +589,28 @@ class PedestrianComfort():
 
         '''
         sc.import_ladybug_grid(self, path, name)
+        
+    def import_csv_grid_with_numbers(self, path, name):
+        '''
+        Take path, set grid as name
+
+        Parameters
+        ----------
+        path : pathlib.Path
+            A path to the ladybug grid saved as text.
+        name : str
+            The name which is to be assigned to the grid.
+
+        Returns
+        -------
+        None.
+
+        '''
+        df = pd.read_csv(path, header=0, names=["X", "Y", "Z"])
+        
+        df = df.rename('P{}'.format)
+        self.grid[name] = {}
+        self.grid[name]['data'] = df
 
     def upload_probe_plots(self):
         '''
@@ -541,10 +648,14 @@ class PedestrianComfort():
             )
 
             grids[key]['id'] = table_id
-            plot_ids.append(probe_plot)
+            
+            self.plot_ids.append(probe_plot)
+            
         self.grid = grids
-        self.plot_ids = plot_ids
-
+        
+    def _set_probe_plots(self):
+        self.simulation_model.result_control.probe_points = self.plot_ids
+        
     def run_all_directions(self):
         '''
         Takes all predefined directions and runs them in parrallel
@@ -556,11 +667,15 @@ class PedestrianComfort():
         '''
         directions = self.get_wind_directions()
         for key in directions:
-            self.create_wind_tunnel(direction=float(key))
-            self.update_spec_lbm(float(key))
+            
+            self._set_abl_table(key)
+            self._set_wind_tunnel(str(key))
+            self._update_spec(self.simulation_spec)
 
             # Create simulation run
-            simulation_run = sim.SimulationRun(name="Direction - {} - run {}".format(key, 1))
+            name="Direction - {} - run {}".format(key, 1)
+            self.runs[key] = name
+            simulation_run = sim.SimulationRun(name=name)
             simulation_run = self.run_api.create_simulation_run(self.project_id, self.simulation_id, simulation_run)
             run_id = simulation_run.run_id
 
@@ -632,3 +747,182 @@ class PedestrianComfort():
 
         '''
         self.run_ids = self.find_runs(run_number)
+        
+    def get_run_names(self):
+        run_names = []
+        for key in self.run_ids.keys():
+            run = self.run_api.get_simulation_run(self.project_id, 
+                                                  self.simulation_id, 
+                                                  self.run_ids[key])
+            
+            run_names.append(run.name)
+            
+    def monitor_simulation(self, interval=100):
+        import time
+        
+        
+        simulation_status = {}
+        for key in self.run_ids.keys():
+            run = self.run_api.get_simulation_run(self.project_id, 
+                                                  self.simulation_id, 
+                                                  self.run_ids[key])
+                    
+            
+            simulation_status[self.run_ids[key]] = {'run': run,
+                                                    'status': run.status}
+        
+        def update_status(simulation_status):
+            print_dict = {}
+            for key in simulation_status.keys():
+                
+                simulation_status[key]['run'] = self.run_api.get_simulation_run(
+                    self.project_id, 
+                    self.simulation_id, 
+                    key)
+                
+                simulation_status[key]['status'] = simulation_status[key]['run'].status
+                print_dict[simulation_status[key]['run'].name] = simulation_status[key]['status']
+            return simulation_status, print_dict
+        
+        def check_all_statuses(simulation_status):
+            check_no=0
+            for key in simulation_status.keys():
+                if simulation_status[key]['status'] in ("FINISHED", "CANCELED", "FAILED"):
+                    check_no += 1
+                    
+            if check_no == len(simulation_status):
+                exit_code = 1
+            else:
+                exit_code = 0
+            return exit_code
+        
+        while check_all_statuses(simulation_status) == 0:
+            
+            simulation_status, print_dict = update_status(simulation_status)
+            print(print_dict)
+            time.sleep(interval)
+        
+
+class model_obj:
+    
+    def __init__(self):
+        self.model = sim.IncompressiblePacefish(
+            bounding_box_uuid=[],
+            flow_domain_boundaries=sim.FlowDomainBoundaries(
+                xmin=sim.VelocityInletBC(
+                    name="Velocity inlet (A)",
+                    velocity=sim.FixedMagnitudeVBC(
+                            type="FIXED_VALUE_NO_EXPRESSION",
+                            value=sim.DimensionalFunctionSpeed(
+                                value=sim.TableDefinedFunction(
+                                    type="TABLE_DEFINED",
+                                    label="upload",
+                                    table_id=None,
+                                    result_index=[
+                                        2,
+                                    ],
+                                    independent_variables=[
+                                        sim.TableFunctionParameter(
+                                            reference=1,
+                                            parameter="HEIGHT",
+                                            unit="m",
+                                        ),
+                                    ],
+                                    separator=",",
+                                    out_of_bounds="CLAMP",
+                                ),
+                                unit="m/s",
+                            ),
+                        ),
+                    turbulence_intensity=sim.TurbulenceKineticEnergyTIBC(
+                            type="TURBULENCE_KINETIC_ENERGY",
+                            value=sim.DimensionalFunctionTurbulenceKineticEnergy(
+                                value=sim.TableDefinedFunction(
+                                    type="TABLE_DEFINED",
+                                    label="upload",
+                                    table_id=None,
+                                    result_index=[
+                                        3,
+                                    ],
+                                    independent_variables=[
+                                        sim.TableFunctionParameter(
+                                            reference=1,
+                                            parameter="HEIGHT",
+                                            unit="m",
+                                        ),
+                                    ],
+                                    separator=",",
+                                    out_of_bounds="CLAMP",
+                                ),
+                                unit="m²/s²",
+                            ),
+                        ),
+                    dissipation_type=sim.CustomOmegaDissipation(
+                            type="CUSTOM_DISSIPATION",
+                            value=sim.DimensionalFunctionSpecificTurbulenceDissipationRate(
+                                value=sim.TableDefinedFunction(
+                                    type="TABLE_DEFINED",
+                                    label="upload",
+                                    table_id=None,
+                                    result_index=[
+                                        4,
+                                    ],
+                                    independent_variables=[
+                                        sim.TableFunctionParameter(
+                                            reference=1,
+                                            parameter="HEIGHT",
+                                            unit="m",
+                                        ),
+                                    ],
+                                    separator=",",
+                                    out_of_bounds="CLAMP",
+                                ),
+                                unit="1/s",
+                            ),
+                        ),
+                    ),
+                xmax=sim.PressureOutletBC(name="Pressure outlet (B)"),
+                ymin=sim.WallBC(name="Side (C)", velocity=sim.SlipVBC()),
+                ymax=sim.WallBC(name="Side (D)", velocity=sim.SlipVBC()),
+                zmin=sim.WallBC(
+                    name="Ground (E)",
+                    velocity=sim.NoSlipVBC(
+                        surface_roughness=sim.DimensionalLength(value=0, unit="m"),
+                    ),
+                ),
+                zmax=sim.WallBC(name="Top (F)", velocity=sim.SlipVBC()),
+            ),
+            simulation_control=sim.FluidSimulationControl(
+                end_time=sim.DimensionalTime(value=5, unit="s"),
+            ),
+            advanced_modelling=sim.AdvancedModelling(),
+            result_control=sim.FluidResultControls(
+                forces_moments=[],
+                probe_points=[],
+                transient_result_control=sim.TransientResultControl(
+                    write_control=sim.CoarseResolution(),
+                    export_fluid=True,
+                    geometry_primitive_uuids=[],
+                ),
+                statistical_averaging_result_control=sim.StatisticalAveragingResultControlV2(
+                    sampling_interval=sim.CoarseResolution(),
+                    export_fluid=True,
+                    geometry_primitive_uuids=[]
+                ),
+                snapshot_result_control=sim.SnapshotResultControl(
+                    export_fluid=True,
+                    geometry_primitive_uuids=[],
+                ),
+            ),
+            mesh_settings_new=sim.PacefishAutomesh(
+                new_fineness=sim.PacefishFinenessCoarse(),
+                reference_length_computation=sim.AutomaticReferenceLength(),
+                primary_topology=sim.BuildingsOfInterest(
+                    type='BUILDINGS_OF_INTEREST',
+                    topological_reference = sim.TopologicalReference(
+                        entities=[],
+                        sets=[],
+                    ),
+                )
+            ),
+        )
