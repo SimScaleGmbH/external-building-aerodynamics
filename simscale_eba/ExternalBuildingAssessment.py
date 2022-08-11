@@ -418,6 +418,15 @@ class PedestrianComfort():
                                                   geometry_id=self.geometry_id, 
                                                   model=self.simulation_model)        
     
+    def set_manual_reynolds_scaling(self, reynolds_scale=1):
+        
+        self.simulation_model.\
+             mesh_settings_new.\
+             reynolds_scaling_type = sim.ManualReynoldsScaling(type='MANUAL_REYNOLDS_SCALING', 
+                                                               reynolds_scaling_factor=reynolds_scale)
+        
+        
+    
     def create_default_simulation(self, fineness = 'COARSE', number_of_fluid_passes=3):
         
         self._create_default_spec(fineness=fineness,
@@ -612,7 +621,7 @@ class PedestrianComfort():
         self.grid[name] = {}
         self.grid[name]['data'] = df
 
-    def upload_probe_plots(self):
+    def upload_probe_plots(self, fraction_from_end=0.2):
         '''
         Uploads all defined probe points in the analysis type to SimScale
 
@@ -622,7 +631,6 @@ class PedestrianComfort():
 
         '''
         grids = self.grid
-        plot_ids = self.plot_ids
         project_id = self.project_id
         for key in grids:
             print("uploading probe plot: {}".format(key))
@@ -644,6 +652,7 @@ class PedestrianComfort():
             probe_plot = sim.ProbePointsResultControl(
                 name=key,
                 write_control=sim.ModerateResolution(),
+                fraction_from_end=fraction_from_end,
                 probe_locations=sim.TableDefinedProbeLocations(table_id=table_id)
             )
 
@@ -894,6 +903,7 @@ class model_obj:
             ),
             simulation_control=sim.FluidSimulationControl(
                 end_time=sim.DimensionalTime(value=5, unit="s"),
+                max_run_time=sim.DimensionalTime(value=100000, unit="s"),
             ),
             advanced_modelling=sim.AdvancedModelling(),
             result_control=sim.FluidResultControls(
