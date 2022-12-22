@@ -33,7 +33,7 @@ def check_api(self):
         print("SimScale API Key and URL found in environment variables.")
 
 
-def create_client(self, version=0):
+def create_client(self, version=0, server='prod'):
     '''
     Reads API key and URL and returns API clients required.
     
@@ -57,7 +57,7 @@ def create_client(self, version=0):
         An object contain api keys and credential information
 
     '''
-    credentials = api.SimscaleCredentials()
+    credentials = api.SimscaleCredentials(server=server)
     credentials.check_variables()
 
     api_key_header = credentials.get_api_header()
@@ -86,7 +86,7 @@ def create_api(self):
     simulation_run_api = sim.SimulationRunsApi(self.api_client)
     geometry_api = sim.GeometriesApi(self.api_client)
     storage_api = sim.StorageApi(self.api_client)
-    geometry_import_api = sim.GeometryImportsApi((self.api_client))
+    geometry_import_api = sim.GeometryImportsApi(self.api_client)
     table_import_api = sim.TableImportsApi(self.api_client)
 
     self.project_api = project_api
@@ -295,8 +295,7 @@ def import_ladybug_grid(self, path, name):
     df['Z'] = df['Z'].str[:-1].astype(float)
     df = df.rename('P{}'.format)
     self.grid[name] = {}
-    self.grid[name]['data'] = df
-
+    self.grid[name]['data'] = df    
 
 def case_to_csv(inputPath, output_file=pathlib.Path.cwd()):
     """
