@@ -711,6 +711,10 @@ class AtmosphericBoundaryLayer():
         df = self.to_dataframe(_list)
         df.to_csv(path, index=False)
         return path
+    
+    def to_of_csv(self, path=pathlib.Path.cwd(), square_distance=5000.0):
+        pass
+        
 
     def to_dataframe(self, _list=["u", "tke", "omega"]):
         '''

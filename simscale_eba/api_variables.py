@@ -11,7 +11,8 @@ class SimscaleCredentials():
                  api_key: str = '',
                  api_url: str = '',
                  version: str = '/v0',
-                 header: str = 'X-API-KEY'):
+                 header: str = 'X-API-KEY',
+                 server: str = 'prod'):
         '''
         An object that takes care of the API Key, URL and Headers
 
@@ -39,6 +40,7 @@ class SimscaleCredentials():
         self.api_header = 'X-API-KEY'
         self.version = version
         self.host = ''
+        self.server = server
 
     def _get_variables_from_env(self):
         '''
@@ -85,8 +87,13 @@ class SimscaleCredentials():
         with open(path, "r") as stream:
             try:
                 yaml_dict = yaml.safe_load(stream)
-                self.api_key = yaml_dict['prod_api_keys']['SIMSCALE_API_KEY']
-                self.api_url = yaml_dict['prod_api_keys']['SIMSCALE_API_URL']
+                
+                if self.server == 'prod':
+                    self.api_key = yaml_dict['prod_api_keys']['SIMSCALE_API_KEY']
+                    self.api_url = yaml_dict['prod_api_keys']['SIMSCALE_API_URL']
+                else:
+                    self.api_key = yaml_dict['dev0_api_keys']['SIMSCALE_API_KEY']
+                    self.api_url = yaml_dict['dev0_api_keys']['SIMSCALE_API_URL']                    
 
                 self._get_api_host()
 
