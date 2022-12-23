@@ -15,28 +15,98 @@ class block():
         self.rotation_angle = rotation_angle
         
         self.vertices = np.array([\
-                                 [-0.5, -0.5, -0],
-                                 [+0.5, -0.5, -0],
-                                 [+0.5, +0.5, -0],
-                                 [-0.5, +0.5, -0],
-                                 [-0.5, -0.5, +1],
-                                 [+0.5, -0.5, +1],
-                                 [+0.5, +0.5, +1],
-                                 [-0.5, +0.5, +1]])
+                                 [-0.5, -0.5, -0],#0
+                                 [+0.5, -0.5, -0],#1
+                                 [+0.5, +0.5, -0],#2
+                                 [-0.5, +0.5, -0],#3
+                                 [-0.5, -0.5, +1],#4
+                                 [+0.5, -0.5, +1],#5
+                                 [+0.5, +0.5, +1],#6
+                                 [-0.5, +0.5, +1]])#7
             
         self.faces = np.array([\
+                              #Bottom
                               [0,3,1],
                               [1,3,2],
+                              #Side 1
                               [0,4,7],
                               [0,7,3],
+                              #Top
                               [4,5,6],
                               [4,6,7],
+                              #Side 2
                               [5,1,2],
                               [5,2,6],
+                              #Back
                               [2,3,6],
                               [3,7,6],
+                              #Front
                               [0,1,5],
                               [0,5,4]])
+        
+        self.block = None
+        self._scale(self.dimensions)
+        self._translate(self.origin)
+        self._rotate(self.rotation_angle)
+        self._create_block()
+        
+    def _rotate(self, angle):
+        
+        angle = np.radians(angle)
+        ox, oy, oz = self.origin
+        px, py, pz = np.hsplit(self.vertices, 3)
+    
+        qx = ox + np.cos(angle) * (px - ox) - np.sin(angle) * (py - oy)
+        qy = oy + np.sin(angle) * (px - ox) + np.cos(angle) * (py - oy)
+        
+        self.vertices = np.concatenate([qx, qy, pz], axis=1)
+    
+    def _scale(self, dimensions):
+        self.vertices = self.vertices*dimensions
+    
+    def _translate(self, translation):
+        self.vertices = self.vertices + translation
+        
+    def _create_block(self):
+        self.block = mesh.Mesh(np.zeros(self.faces.shape[0], dtype=mesh.Mesh.dtype))
+        for i, f in enumerate(self.faces):
+            for j in range(3):
+                self.block.vectors[i][j] = self.vertices[f[j],:]
+                
+class spire():
+    
+    def __init__(self, 
+                 origin=np.array([0,0,0]), 
+                 dimensions=np.array([1, 1, 1]),
+                 rotation_angle=0):
+        
+        self.origin = origin
+        self.dimensions = dimensions
+        self.rotation_angle = rotation_angle
+        
+        #Base first from low to high xy, clockwise
+        self.vertices = np.array([\
+                                 [-0.5, -0.5, -0],#0
+                                 [+0.5, -0.5, -0],#1
+                                 [+0.5, +0.5, -0],#2
+                                 [-0.5, +0.5, -0],#3
+                                 [0, -0.5, +1],#4
+                                 [0, +0.5, +1]])#5
+            
+        self.faces = np.array([\
+                              #Bottom
+                              [0,3,1],
+                              [1,3,2],
+                              #Side 1
+                              [0,3,5],
+                              [0,5,2],
+                              #Side 2
+                              [1,2,5],
+                              [1,5,4],
+                              #Front
+                              [0,1,4],
+                              #Back
+                              [2,3,5]])
         
         self.block = None
         self._scale(self.dimensions)
