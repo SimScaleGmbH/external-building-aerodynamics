@@ -146,7 +146,7 @@ def test_integral_lenght_scale(show_plot=False):
     path = pathlib.Path.cwd() / "{}.csv".format(component)
     data = pd.read_csv(path, index_col="Time (s)")
 
-    t = data.index
+    t = data.index.to_numpy()
     x = data[f"{probe}"].to_numpy()
 
     # Perfrom frequency analysis
@@ -282,5 +282,5 @@ def test_compute_spectrums(show_plot=False):
 
 if __name__ == "__main__":
 
-    # test_integral_lenght_scale(show_plot=True)
-    test_compute_spectrums(show_plot=True)
+    test_integral_lenght_scale(show_plot=False)
+    test_compute_spectrums(show_plot=False)
