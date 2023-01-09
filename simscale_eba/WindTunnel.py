@@ -69,10 +69,10 @@ class RegionOfInterest():
             self._O = O * self._tallest_building_height
 
         elif self._tunnel_size == "custom":
-            H, S, I, O = *(height_extension, 
-                           side_extension, 
-                           inflow_extension, 
-                           outflow_extension)
+            H, S, I, O = (height_extension, 
+                          side_extension, 
+                          inflow_extension, 
+                          outflow_extension)
         else:
             raise ValueError(
                 "Wind Tuneel Size '{}' does not exist, use moderate, large or custom".format(self.__tunnel_size))
