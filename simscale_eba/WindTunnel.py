@@ -37,7 +37,10 @@ class RegionOfInterest():
         self._I = None
         self._O = None
 
-    def set_windtunnel_size(self, H=300, S=300, I=300, O=900):
+    def set_windtunnel_size(self, height_extension=300, 
+                            side_extension=300, 
+                            inflow_extension=300, 
+                            outflow_extension=900):
         if self._tunnel_size == "moderate":
             H, S, I, O = 3, 3, 3, 9
 
@@ -55,7 +58,7 @@ class RegionOfInterest():
             self._O = O * self._tallest_building_height
 
         elif self._tunnel_size == "custom":
-            pass
+            H, S, I, O = height_extension, side_extension, inflow_extension, outflow_extension
         else:
             raise ValueError(
                 "Wind Tuneel Size '{}' does not exist, use moderate, large or custom".format(self.__tunnel_size))
