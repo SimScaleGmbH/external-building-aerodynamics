@@ -896,7 +896,9 @@ class model_obj:
                 zmin=sim.WallBC(
                     name="Ground (E)",
                     velocity=sim.NoSlipVBC(
-                        surface_roughness=sim.DimensionalLength(value=0, unit="m"),
+                        no_slip_wall_roughness_type=sim.NoSlipWallEquivalentSandRoughness(
+                            surface_roughness=sim.DimensionalLength(value=0, unit="m")
+                        )
                     ),
                 ),
                 zmax=sim.WallBC(name="Top (F)", velocity=sim.SlipVBC()),
