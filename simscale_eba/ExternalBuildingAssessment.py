@@ -403,12 +403,15 @@ class PedestrianComfort():
              
         self.vertical_slice = _slice.geometry_primitive_id
     
-    def _create_default_spec(self, fineness = 'COARSE', number_of_fluid_passes=3):
+    def _create_default_spec(self, 
+                             fineness = 'COARSE', 
+                             number_of_fluid_passes=3,
+                             ):
         self._init_model()
         self._init_default_wind_tunnel()
         self._init_default_wind_abl()
-
-        self._get_geometry_map()
+        if self.building_geom == None:
+            self._get_geometry_map()
         self._set_buildings_as_mesh_entities()
         self._set_simulation_length(number_of_fluid_passes=number_of_fluid_passes)
         self._set_probe_plots()
