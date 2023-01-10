@@ -172,6 +172,9 @@ class WindData():
                 method_dict=method_dict)
 
             self.set_atmospheric_boundary_layer(str(_dir), profile)
+            
+    def set_digital_wind_tunnel():
+        pass
 
 
 class WeatherPeriods():

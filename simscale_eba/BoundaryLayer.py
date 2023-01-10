@@ -251,6 +251,7 @@ class AtmosphericBoundaryLayer():
                 -LOGLAW (recomended)
                 -EUROCODE.
                 -POWER
+                -UNIFORM
 
         Raises
         ------
@@ -335,6 +336,9 @@ class AtmosphericBoundaryLayer():
                     return_without_units=self.return_without_units
 
                 )
+                
+            elif method == "UNIFORM":
+                self._u = np.ones(self._height.shape)*self._reference_speed
 
             else:
                 raise Exception("{} was not a valid input".format(method))
