@@ -1,1225 +1,1142 @@
-import json
-import pathlib
-import shutil
+# -*- coding: utf-8 -*-
+"""
+Created on Thu Oct 20 10:09:12 2022
+
+@author: mkdei
+"""
+import os
+import time
 import zipfile
-from itertools import groupby
+import shutil
 
-import numpy as np
-import pandas as pd
-from scipy.stats import weibull_min
-from sklearn.cluster import DBSCAN
+import isodate
+import urllib3
 
-import simscale_eba.SimulationCore as sc
-import simscale_eba.TestConditions as tc
-import simscale_eba.post_processing.NonDimensionalQuantities as nd
-import simscale_eba.pwc_status as stat
+import json 
+import requests
 
+import simscale_sdk as sim_sdk
 
-class pedestrian_wind_comfort_setup():
-
-    def __init__(self, credentials=None):
+class PedestrianWindComfort():
+    
+    def __init__(self): 
         
-        self.api_client = None
-        self.credentials = credentials
-        self.api_key_header = None
-        self.api_key = None
-
+        #API Variables
+        self.api_key        = ""
+        self.api_url        = ""
+        self.api_key_header = "X-API-KEY"
+        self.version        = "/v0"
+        self.host           = ""
+        self.server         = "prod"
+        
+        #Client Variables
+        self.api_client  = None
         self.project_api = None
-        self.simulation_api = None
-        self.mesh_operation_api = None
-        self.run_api = None
-        self.geometry_api = None
-        self.geometry_import_api = None
-
-        # SimScale ID's
-        self.project_id = None
-        self.simulation_id = None
-        self.mesh_operation_id = None
-        self.mesh_id = None
-        self.run_id = None
-        self.geometry_id = None
-
-        self.geometry_id = None
-        self.copper_id = None
-        self.overmold_id = None
-
-        self.simulation = None
-
-        self.exposure_categories = []
-        self.aerodynamic_roughnesses = []
-        self.meteo_correctors = []
-        self.directions = []
-        self.wind_conditions = None
-
-        self.wind_standard = None
-        self.number_of_directions = None
-        
-        if self.credentials == None:
-            sc.create_client(self)
-        else:
-            sc.get_keys_from_client(self)
-            
-        sc.create_api(self)
-
-    def get_project(self, project):
-        sc.find_project(self, project)
-
-    def get_simulation(self, simulation):
-        sc.find_simulation(self, simulation)
-        self._get_simulation()
-        self._get_wind_information()
-        self._get_meteological_correctors()
-
-    def _get_simulation(self):
-        self.simulation = self.simulation_api.get_simulation(
-            self.project_id, self.simulation_id)
-
-    def get_example_mesh(self):
-        spec = self.mesh_operation_api.get_mesh_operation_sdk_code(
-            self.project_id, self.mesh_operation_id)
-
-        return spec
-
-    def _get_wind_information(self):
-        self.exposure_categories = self.simulation.model.wind_conditions.wind_rose.exposure_categories
-        self.wind_standard = self.simulation.model.wind_conditions.wind_rose.wind_engineering_standard
-        self.number_of_directions = self.simulation.model.wind_conditions.wind_rose.num_directions
-        self.directions = np.arange(start=0, stop=360, step=360 / self.number_of_directions)
-
-        map_dict = {
-            "EU": {"EC1": None, "EC2": 1, "EC3": 0.3, "EC4": 0.05, "EC5": 0.01, "EC6": 0.003},
-            "AS_NZS": {"EC1": 2, "EC2": None, "EC3": 0.2, "EC4": 0.02, "EC5": 0.002, "EC6": None},
-            "NEN8100": {"EC1": 2, "EC2": 1, "EC3": 0.5, "EC4": 0.25, "EC5": 0.03, "EC6": 0.0002},
-            "LONDON": {"EC1": 1, "EC2": 0.5, "EC3": 0.3, "EC4": 0.05, "EC5": 0.01, "EC6": None},
-        }
-
-        standard_map = map_dict[self.wind_standard]
-
-        aerodynamic_roughnesses = []
-        for exposure_category in self.exposure_categories:
-            aerodynamic_roughnesses.append(standard_map[exposure_category])
-
-        self.aerodynamic_roughnesses = aerodynamic_roughnesses
-
-    def _get_meteological_correctors(self):
-        wind_conditions = tc.WindData()
-
-        wind_conditions.set_atmospheric_boundary_layers(
-            directions=np.arange(0, 360, 360 / self.number_of_directions).tolist(),
-            surface_roughness_list=self.aerodynamic_roughnesses,
-            reference_speeds=(10 * np.ones(self.number_of_directions)).tolist(),
-            reference_heights=(10 * np.ones(self.number_of_directions)).tolist(),
-            method_dict={'u': 'LOGLAW', 'tke': 'YGCJ', 'omega': 'YGCJ'},
-            return_without_units=True
-        )
-
-        self.wind_conditions = wind_conditions
-        self.meteo_correctors = wind_conditions.meteo_correctors
-
-    def to_dict(self):
-        output_dict = {}
-        for direction, roughness, exposure in zip(self.directions,
-                                                  self.aerodynamic_roughnesses,
-                                                  self.exposure_categories):
-            direction = str(direction)
-            output_dict[direction] = {}
-            output_dict[direction]["meteo_corrector"] = self.meteo_correctors[direction]
-            output_dict[direction]["aerodynamic_roughness"] = roughness
-            output_dict[direction]["exposure_categories"] = exposure
-
-        return output_dict
-
-
-class pedestrian_wind_comfort_results():
-
-    def __init__(self, credentials=None, access_simscale=True):
-        
-        # The SimScale names
-        self.project_name = None
-        self.simulation_name = None
-        self.run_name = None
-        self.result_directory = None
-
-        # SimScale ID's
-        self.project_id = None
-        self.simulation_id = None
-        self.run_id = None
-        self.geometry_id = None
-        self.storage_id = None
-        self.flow_domain_id = None
-        self.wind_profile_id = {}
-
-        # SimScale API's
-        self.project_api = None
-        self.simulation_api = None
-        self.run_api = None
-        self.geometry_api = None
-        self.geometry_import_api = None
         self.storage_api = None
-
-        # SimScale Authentication
-        self.credentials = credentials
-        self.api_client = None
-        self.api_key_header = None
-        self.api_key = None
-
-        # Pedestrian Comfort Settings
-        self.pedestrian_wind_comfort_setup = None
-        self.number_of_directions = None
-        self.number_of_points = None
-        self.minimum_resolution = 0
-
-        # Result Outputs
-        self.url_dictionary_results = {}
-        self.directional_csv_dict = {}
-        self.dimensional_results = {}
-        self.dimensionless_results = {}
-        self.hourly_continuous_results = {}
-        self.coordinates = None
-        self.reduced_coordinates = None
-        self.comfort_maps = {}
-
-        # Weather objects
-        self.weather_statistics = None
-        self.comfort_criteria = None
-
-        self.status = stat.simulation_status()
+        self.geometry_import_api = None
+        self.geometry_api = None
+        self.simulation_api = None
+        self.simulation_run_api = None
+        self.table_import_api =None
+        self.reports_api = None
+        self.wind_api = None 
         
-        if access_simscale:
-            # Check and create API environment
-            if self.credentials == None:
-                sc.create_client(self)
-                
-            else:
-                sc.get_keys_from_client(self)
+        #Project Variables 
+        self.project_name = ""
+        self.project_id   = ""
+        
+        #Geometry Variables
+        self.geometry_name = ""
+        self.geometry_id   = ""
+        self.geometry_path = ""
+        
+        #Region Of Interest Variables
+        self.region_of_interest = None
+        self.roi_radius = 300
+        self.center = [0,0]
+        self.ground_height = 0 
+        self.north_angle = 0 
+        self.wind_tunnel_size = "" # moderate, large, custom
+        self.wind_tunnel_size_obj = None
+        self.wind_tunnel_type = None # only used when defining custom WT
+        self.height_extension = None
+        self.side_extension = None
+        self.inflow_extension = None 
+        self.outflow_extension = None 
+        
+        #Wind Condition Variables
+        self.wind_conditions = None 
+        self.latitude = None 
+        self.longitude = None 
+        self.latitude_meteoblue = None
+        self.longitude_meteoblue = None
+        self.geo_location_obj = None 
+        self.wind_rose = None 
+        self.wind_data_source = '' #METEOBLUE, USER_UPLOAD
+        self.wind_engineering_standard = '' #["EU", "AS_NZS", "NEN8100", "LONDON"]
+        self.number_wind_directions = None 
+        self.exposure_category = []  #["EC1", "EC2", "EC3", "EC4", "EC5", "EC6"] 
+        self.wind_velocity_unit = "m/s"
+        self.add_surface_roughness = True 
+        
+        #Pedestrian Comfort Map Variables
+        self.pedestrian_comfort_map = []
+        self.pedestrian_comfort_surface = None
+        self.pedestrian_surface_name = None 
+        self.height_above_ground = None
+        self.comfort_ground_type = None
+        
+        #Simulation Control Variables 
+        self.max_dir_run_time = 10000
+        self.num_of_fluid_passes = 3
+        self.sim_control = None 
+        
+        #Mesh Settings Variables
+        self.mesh_fineness = None
+        self.reynolds_scaling = None 
+        self.mesh_master = None 
+        self.min_cell_size = None 
+        
+        #Simulation Creation Variables
+        self.model = None 
+        self.simulation_spec = None
+        self.simulation_id   = None
+        self.simulation_run  = None 
+        self.run_id = None
+        
+    """Functions that allows setting up the API connection"""
+    
+    def _get_variables_from_env(self):
+        
+        '''
+        looks in your environment and reads the API variables
+        
+        SimScale API key and URL are read if they are set in the 
+        environment as:
             
-            sc.create_api(self)
-
-    def get_pedestrian_wind_comfort(self, project, simulation, run, path=pathlib.Path.cwd()):
-        '''
-        Take names, return path to downloaded results.
-        
-        Parameters
-        ----------
-        project : string
-            The exact name of the project, best copied from the SimScale 
-            UI.
-        simulation : string
-            The exact name of the simulation, best copied from the SimScale 
-            UI..
-        run : string
-            The exact name of the simulation run, best copied from the 
-            SimScale UI.
-        output_folder : TYPE
-            DESCRIPTION.
-        Returns
-        -------
-        pathlib.Path
-            Path to the downloaded results.
-        '''
-
-        setup = pedestrian_wind_comfort_setup(credentials=self.credentials)
-        
-        setup.get_project(project)
-        setup.get_simulation(simulation)
-
-        self.result_directory = pathlib.Path(path)
-
-        self.project_name = project
-        self.simulation_name = simulation
-        self.run_name = run
-
-        self.status.set_simulation(project, simulation, run)
-        self.status.result_directory = self.result_directory
-
-        self.pedestrian_wind_comfort_setup = setup
-        
-        self.project_id = setup.project_id
-        self.simulation_id = setup.simulation_id
-
-        self.project_api = setup.project_api
-        self.run_api = setup.run_api
-        '''
-        self.api_client = setup.api_client
-        self.api_key_header = setup.api_key_header
-        self.api_key = setup.api_key
-        '''
-        sc.find_run(self, run)
-
-        self.pull_run_results(output_folder=self.result_directory)
-
-    def pull_run_results(self, 
-                         output_folder=pathlib.Path.cwd(), 
-                         cleanup=True):
-        '''
-        
-
-        Parameters
-        ----------
-        output_folder : TYPE, optional
-            DESCRIPTION. The default is pathlib.Path.cwd().
+            SIMSCALE_API_KEY
+            SIMSCALE_API_URL
 
         Returns
         -------
         None.
 
         '''
-        output = pathlib.Path(output_folder)
-        output.mkdir(parents=True, exist_ok=True)
-
-        self.get_average_direction_url()
-        dict_ = self.url_dictionary_results
-
-        csv_list = {}
-        for key in dict_:
-            #Only download new results if they are new or different
-            if not self.status.check_simulation_status():
-                case_file_path = self.download_average_direction_result(
-                    direction=key, path=self.result_directory)
-                
-                sc.case_to_csv(
-                    output.joinpath(key, case_file_path.name).as_posix(),
-                    output.joinpath(f'{key}.csv').as_posix())
-
-                csv_list[key] = output.joinpath(f'{key}.csv')
-                #shutil.rmtree(output.joinpath(key).as_posix(), ignore_errors=True)
-
-                self.status.update_download_path(
-                    key, output.joinpath(f'{key}.csv').as_posix())
-            else:
-                if self.status.download_paths is None:
-                    self.status.read_simulation_status()
-                else:
-                    csv_list[key] = pathlib.Path(
-                        self.status.download_paths[key])
+        try:
+            self.api_key = os.getenv('SIMSCALE_API_KEY')
+            self.api_url = os.getenv('SIMSCALE_API_URL')
+            self.host = self.api_url + self.version
+        except:
+            raise Exception("Cannot get Keys from Environment Variables")
         
-        #Just export the first file, caveate is that floor geom changes
-        #per direction
-        first_key = list(dict_.keys())[0]
-        stl_input_file = output.joinpath(key, 
-                                         self.download_average_direction_result(
-                                             direction=first_key, 
-                                             path=self.result_directory
-                                        ).name).as_posix()
-        
-        #Only export the STL again if its new or different
-        if not self.status.check_simulation_status():
-            stl_dict = sc.case_to_stl(stl_input_file, output)
-            self.status.output_stl_paths = stl_dict
-        
-        #After all processes remove original data
-        if cleanup:
-            for key in dict_:
-                shutil.rmtree(output.joinpath(key).as_posix(), 
-                              ignore_errors=True)
-                
-        self.directional_csv_dict = csv_list
-        self.status.write_simulation_status(boolean=True)
-
-        # number of directions should come from PWC setup
-        self.number_of_directions = len(csv_list.keys())
-        self._check_valid_comfort_plots()
-
-    def _check_valid_comfort_plots(self):
+    def check_api(self):
         '''
-        Checks number of points for all directions, exception if not all the same
-
+        Check API key is set, returns boolean True if not set.
+    
         Raises
         ------
         Exception
-            Occurs if comfort plots have different numbers of points, this
-            is currently hard to handle, and in the scope of post processing
-            will not be handled. 
+            If the API key and URL is not set, rasie an exception.
+    
+        Returns
+        -------
+        is_not_existent : boolean
+            True if not set.
+    
+        '''
+        is_not_existent = not os.getenv("SIMSCALE_API_KEY") or not os.getenv("SIMSCALE_API_URL")
+        if is_not_existent:
+            raise Exception(
+                "Either `SIMSCALE_API_KEY` or `SIMSCALE_API_URL`",
+                " environment variable is missing.")
+            return is_not_existent
+        else:
+            print("SimScale API Key and URL found in environment variables.")
+
+    def set_api_connection(self, version=0, server='prod'):
+        '''
+        Reads API key and URL and returns API clients required.
+        
+        ----------
+        version : int
+            Version of SimScale API, at time of writing, only 0 is valid.
+            Default is 0.
+        
+        Returns
+        -------
+        api_client : object
+            An API client that represents the user, and their login 
+            credentials.
+        api_key_header : object
+        api_key : string
+            A string that is your API key, read from the environment 
+            variables.
+        credential : SimscaleCredentials object
+            An object contain api keys and credential information
+    
+        '''
+        #Get the API url and key variables from env variables and do a sanity check 
+        self._get_variables_from_env()
+        self.check_api()
+        
+        #Setup the API configuration (define host and link the associated key)
+        configuration = sim_sdk.Configuration()
+        configuration.host = self.host
+        configuration.api_key = {self.api_key_header: self.api_key}
+        
+        #Setup the API client connection 
+        self.api_client = sim_sdk.ApiClient(configuration)
+        retry_policy = urllib3.Retry(connect=5, read=5, redirect=0, status=5, backoff_factor=0.2)
+        self.api_client.rest_client.pool_manager.connection_pool_kw["retries"] = retry_policy
+       
+        #Define the required API clients for the simulation 
+        self.project_api = sim_sdk.ProjectsApi(self.api_client)
+        self.storage_api = sim_sdk.StorageApi(self.api_client)
+        self.geometry_import_api = sim_sdk.GeometryImportsApi(self.api_client)
+        self.geometry_api = sim_sdk.GeometriesApi(self.api_client)
+        self.simulation_api = sim_sdk.SimulationsApi(self.api_client)
+        self.simulation_run_api = sim_sdk.SimulationRunsApi(self.api_client)
+        self.table_import_api = sim_sdk.TableImportsApi(self.api_client)
+        self.reports_api = sim_sdk.ReportsApi(self.api_client) 
+        self.wind_api = sim_sdk.WindApi(self.api_client)
+
+
+    def create_project(self, name, description, measurement_system = "SI"):
+        '''
+        Take a name and description and create a new workbench project
+
+        Parameters
+        ----------
+        name : str
+            A string with the exact name for the new project.
             
-            Later, we could simply check which points are pressent for all
-            and keep only then. As a further step we culd do the same with
-            a small tolerance for computational differences.
+        description : str
+            A string with the exact description for the new project.
+
+        Returns
+        -------
+        None.
 
         '''
-        no_points_list = []
-
-        for key in self.directional_csv_dict.keys():
-            df = pd.read_csv(self.directional_csv_dict[key])
-            no_points = df.shape[0]
-            no_points_list.append(no_points)
-
-        is_equal = all_equal(no_points_list)
-
-        if not is_equal:
-            raise Exception("One or more directions, have comfort plots,"
-                            "where the number of points are different."
-                            "This usually happens if the wind tunnel"
-                            "intersects the comfort plot. We cannot handle"
-                            "thi currently")
-
-    def _write_simulation_status(self, boolean):
-        '''
-        Take the PWC project, simulation and run, place them in a json file
         
-        Here we are telling the result directory that the results stored
-        belong to a certain run, and later, we can read it, and if the 
-        run being requested is the same, we need not download again.
-
-        '''
-        json_dictionary = {
-            "project_name": self.project_name,
-            "simulation_name": self.simulation_name,
-            "run_name": self.run_name,
-            "is_result_downloaded": boolean}
-
-        json_object = json.dumps(json_dictionary, indent=4)
-
-        json_path = self.result_directory / "simulation.json"
-
-        with open(json_path, "w") as outfile:
-            outfile.write(json_object)
-
-    def _check_simulation_status(self):
-        json_path = self.result_directory / "simulation.json"
-
-        signal = None
         try:
-
-            with open(json_path, "r") as read_file:
-                read_dict = json.load(read_file)
-
-            match_project = self.project_name == read_dict["project_name"]
-            match_simulation = self.simulation_name == read_dict["simulation_name"]
-            match_run = self.run_name == read_dict["run_name"]
-            is_downloaded = self.read_dict["is_result_downloaded"]
-
-            if match_project and match_simulation and match_run and is_downloaded:
-                print("Matched to already downloaded results")
-                signal = True
-            else:
-                print("Results downloaded dont match, redownloading")
-                signal = False
+            #Check if the project already exists
+            projects = self.project_api.get_projects(limit=1000).to_dict()['embedded']
+            found = None
+            for project in projects:
+                if project['name'] == name:
+                    found = project
+                    print('Project found: \n' + str(found['name']))
+                    break
+            if found is None:
+                raise Exception('could not find project with name: ' + name)
+            
+            self.project_id = found['project_id']
+            self.project_name = name
+            print("Cannot create project with the same name, using existing project")
         except:
-            print("No results exist, downloading")
-            signal = False
-
-        return signal
-
-    def get_average_direction_url(self):
+            #If not then create a new project
+            project = sim_sdk.Project(name=name, description=description,
+                                      measurement_system = measurement_system)
+            project = self.project_api.create_project(project)
+            self.project_id = project.project_id
+            self.project_name = name        
+             
+    def zip_cad_for_upload(self, file_name, base_path): 
+        
         '''
-        Take names, return a dictionary with direction and location.
+        Take a list of the CAD file names and their associated path then zips 
+        each CAD file separately and submits it for upload 
+        
+        Note: Have all the CAD files stored in the same directory
         
         Parameters
         ----------
-        project : string
-            The exact name of the project, best copied from the SimScale 
-            UI.
-        simulation : string
-            The exact name of the simulation, best copied from the SimScale 
-            UI..
-        run : string
-            The exact name of the simulation run, best copied from the 
-            SimScale UI.
+        file_name : list
+            A list with the exact names of the CAD files to upload
+            
+        base_path : Pathlib Path
+            path to the directory that contains the CAD files 
+
         Returns
         -------
-        dict
-            A dictionary with direction in degrees from north as the key,
-            and a download object as the value.
+        geometry_path : path of the zipped file
+
         '''
-        simulation_run_api = self.run_api
+        geometry_path = []
+        
+        #Loop over the CAD files needed for upload
+        for cad in file_name:
+            
+            #Get the path of each CAD file
+            path = base_path / cad
+            
+            # The output_filename variable saves the zip file at a desired path; 
+            # in this case it is same directory
+            output_filename = path
+             
+            #Retruns a zip file(s) path of the associated CAD, 
+            geometry_path.append(shutil.make_archive(output_filename, 'zip', path)) 
 
-        project_id = self.project_id
-        simulation_id = self.simulation_id
-        run_id = self.run_id
-
-        results = simulation_run_api.get_simulation_run_results(
-            project_id, simulation_id, run_id).embedded
-
-        direction_dict = {}
-
-        for result in results:
-            if result.category == 'AVERAGED_SOLUTION':
-                direction_dict[str(result.direction)] = result.download
-
-        self.url_dictionary_results = direction_dict
-
-    def download_average_direction_result(self,
-                                          direction=float(0),
-                                          path=pathlib.Path.cwd()):
+        return geometry_path
+    
+    def upload_geometry(self, name, path=None, units="m", _format="STL", facet_split=False):
         '''
-        Take dict of directions and locations, and a direction, return results.
+        Upload a geometry to the SimScale platform to a preassigned project.
+        
         Parameters
         ----------
-        direction_dict : dict
-            A dictionary of simscale result URL's with direction as the key.
-        output_folder : path
-            Folder to output results into, subfolders for each direction 
-            will be created.
-        direction : string, optional
-            A string of the angle you wish to download, to download results
-            for a Northerly wind direction specify "0.0". 
-            The default is float(0).
+        name : str
+            The name given to the geometry.
+            
+        path : pathlib.Path, optional
+            The path to a geometry to upload. 
+            
+        units : str, optional
+            the unit in which to upload the geometry to SimScale.
+            
+            The default is "m".
+            
+        _format : str, optional
+            The file format. 
+            
+            The default is "STL".
+            
+        facet_split : bool, optional
+            Decide on weather to split facet geometry (such as .stl file 
+            types). We prefer not to do this for API use.
+            
+            The default is False.
+
+        Raises
+        ------
+        TimeoutError
+            DESCRIPTION.
+
         Returns
         -------
-        is_sucessful : boolean
+        None.
+
         '''
-
-        api_client = self.api_client
-        api_key_header = self.api_key_header
-        api_key = self.api_key
-        download_obj = self.url_dictionary_results[str(direction)]
-
-        url = download_obj.url
-
-        print(f'Downloading results for direction: {direction}')
+        self.geometry_name = name
+        
+        #Check if the geometry already exists
         try:
-            averaged_solution_response = api_client.rest_client.GET(
-                url=url,
-                headers={api_key_header: api_key},
-                _preload_content=False
+            project_id = self.project_id
+            geometry_api = self.geometry_api
+        
+            geometries = geometry_api.get_geometries(project_id).to_dict()['embedded']
+            found = None
+            for geometry in geometries:
+                if geometry['name'] == name:
+                    found = geometry
+                    print('Geometry found: \n' + str(found['name']))
+                    break
+                        
+            if found is None:
+                raise Exception('could not find geometry with id: ' + name)
+                
+            self.geometry_name = found
+            self.geometry_id = found["geometry_id"]
+            print("Cannot upload geometry with the same name, using existing geometry")
+
+        except:
+            
+            self.geometry_path = path
+
+            storage = self.storage_api.create_storage()
+            with open(self.geometry_path, 'rb') as file:
+                self.api_client.rest_client.PUT(url=storage.url, headers={'Content-Type': 'application/octet-stream'},
+                                                body=file.read())
+            self.storage_id = storage.storage_id
+
+            geometry_import = sim_sdk.GeometryImportRequest(
+                name=name,
+                location=sim_sdk.GeometryImportRequestLocation(self.storage_id),
+                format=_format,
+                input_unit=units,
+                options=sim_sdk.GeometryImportRequestOptions(facet_split=facet_split, sewing=False, improve=True,
+                                                         optimize_for_lbm_solver=True),
             )
 
-            out_file = path.joinpath(f'{direction}averaged_solution.zip_')
-            with out_file.open('wb') as zip__file:
-                zip__file.write(averaged_solution_response.data)
+            geometry_import = self.geometry_import_api.import_geometry(self.project_id, geometry_import)
+            geometry_import_id = geometry_import.geometry_import_id
 
-            # extract data
-            zip_ = zipfile.ZipFile(out_file.as_posix())
-            extract_subdirectory = path.joinpath(str(direction))
-            zip_.extractall(extract_subdirectory)
-            zip_.close()
-
-            # delete the file
-            out_file.unlink()
-
-            result_path = extract_subdirectory.joinpath('Directions', str(direction), 'export')
-
-            case_file_path = ''
-            for file in result_path.iterdir():
-                shutil.move(file.as_posix(), extract_subdirectory.joinpath(file.name))
-                if file.suffix == '.case':
-                    case_file_path = file
-
-            delete_path = extract_subdirectory.joinpath('Directions')
-            shutil.rmtree(delete_path.as_posix(), ignore_errors=True)
-        except:
-            raise Exception('results for direction {} failed to download'.format(direction))
-
-        return case_file_path
-
-    def _create_point_file(self):
-        csv_file_key = list(self.directional_csv_dict.keys())[0]
-        csv_file = self.directional_csv_dict[csv_file_key]
-
-        table = pd.read_csv(pathlib.Path(csv_file.as_posix()))
-
-        self.coordinates = table[["Points:0", "Points:1", "Points:2"]]
-
-        columns = ["X", "Y", "Z"]
-
-        self.coordinates.columns = columns
-
-        path = self.directional_csv_dict[csv_file_key].with_name(
-            "points").with_suffix(".feather")
-
-        if self._check_is_reduce_needed():
-            idx = self._reduce_resolution_idx()
-        else:
-            idx = self.coordinates.index
-
+            geometry_import_start = time.time()
+            while geometry_import.status not in ('FINISHED', 'CANCELED', 'FAILED'):
+                # adjust timeout for larger geometries
+                if time.time() > geometry_import_start + 900:
+                    raise TimeoutError()
+                time.sleep(10)
+                geometry_import = self.geometry_import_api.get_geometry_import(self.project_id, geometry_import_id)
+                print(f'Geometry import status: {geometry_import.status}')
+            self.geometry_id = geometry_import.geometry_id
         
-        self.reduced_coordinates = self.coordinates.loc[idx].reset_index()
-        self.reduced_coordinates.to_feather(path)
+            
+    def set_region_of_interest(self, radius, center ,ground_height, north_angle, wt_size = 'moderate'):
         
-        self.status.points_path = path.as_posix()
-        self.status.write_simulation_status()
-
-    def _create_dimensional_quantities(self, variables=['UMag', 'GEM']):
         '''
-        Take csv files, return variables in standard format.
+        Define the region of interest of the PWC simulation 
         
-        Take the output .csv files from VTK, return a tabulated data
-        set for each variable. The format is number of rows is the number
-        of points, the number of columns is the number of directions.
-        
-        The data in the fields will be the variable, in dimensional form.
-        
-        The save formate is a feather file for fast writing and light 
-        storage, with a custome extension of .feather. This should be 
-        considered an  formate, the user should output a .csv for exporting.
-
         Parameters
         ----------
-        variables : list[string], optional
-            The variables you chose to return, current options are:
+        radius : int
+            radius of the region of interest 
                 
-            - UMag
-            - Ux
-            - Uy
-            - Uz
-            - GEM
-            - p
-            - k_total
-            - k_resolved
-            - k_modeled
-            
-            The default is ['UMag', 'GEM'].
-
-        Returns
-        -------
-        None.
-
-        '''
-        no_points = self._get_no_points()
-        csv_list = self.directional_csv_dict
-
-        result_dict = {}
-        for variable in variables:
-            result_dict[variable] = pd.DataFrame(
-                np.zeros((no_points, self.number_of_directions)),
-                columns=csv_list.keys())
-
-        for i, direction in enumerate(csv_list):
-            table = pd.read_csv(pathlib.Path(csv_list[direction]).as_posix())
-            df = nd.csv_to_dimensionall_df(self, table, variables)
-            for column in df.columns:
-                result_dict[column][direction] = df[column]
-
-        self._create_point_file()
-
-        key = list(self.directional_csv_dict.keys())[0]
-        for variable in variables:
-            path = self.directional_csv_dict[key].with_name(
-                "dimensional_{}".format(variable)).with_suffix(".feather")
-
-            self.dimensional_results[variable] = path
-            self.status.update_field_path(variable,
-                                          path.as_posix(),
-                                          is_dimensional=True)
-
-            if self._check_is_reduce_needed():
-                idx = self._reduce_resolution_idx()
-            else:
-                idx = result_dict[variable].index
-
-            result_dict[variable].loc[idx].reset_index().to_feather(path)
-            
-        self.status.write_simulation_status()
-
-    def _create_dimensionless_quantities(self, variables=['UMag', 'GEM']):
-        '''
-        Take csv files, return variables in standard format.
-        
-        Take the output .csv files from VTK, return a tabulated data
-        set for each variable. The format is number of rows is the number
-        of points, the number of columns is the number of directions.
-        
-        The data in the fields will be the variable, in dimensional form.
-        
-        The save formate is a feather file for fast writing and light 
-        storage, with a custome extension of .feather. This should be 
-        considered an  formate, the user should output a .csv for exporting.
-
-        Parameters
-        ----------
-        variables : list[string], optional
-            The variables you chose to return, current options are:
+        center : list
+            list containing the x and y coordinates of the roi center
                 
-            - UMag
-            - Ux
-            - Uy
-            - Uz
-            - GEM
-            - p
-            - k_total
-            - k_resolved
-            - k_modeled
+        ground_height: float 
+            defines the bottom floor of the wind tunnel 
+                
+        north_angle: int/float
+            defines the north direction of your CAD model 
+        
+        wt_size : str Optional 
+            possiblity to choose from three different wind tunnel sizes 
+            modreate, large or custom sizing
+                
+            The default is moderate
             
-            The default is ['UMag', 'GEM'].
-
         Returns
         -------
         None.
 
         '''
-        no_points = self._get_no_points()
-        csv_list = self.directional_csv_dict
+        
+        
+        self.roi_radius , self.center   = radius , center
+        self.ground_height , self.north_angle = ground_height , north_angle
+        self.set_wind_tunnel_size(wt_size)
+        
+        
+        self.region_of_interest = sim_sdk.RegionOfInterest(
+                disc_radius=sim_sdk.DimensionalLength(self.roi_radius, "m"),
+                center_point=sim_sdk.DimensionalVector2dLength(sim_sdk.DecimalVector2d(self.center[0],self.center[1]), "m"),
+                ground_height=sim_sdk.DimensionalLength(self.ground_height, "m"),
+                north_angle=sim_sdk.DimensionalAngle(self.north_angle, "°"),
+                advanced_settings=sim_sdk.AdvancedROISettings(self.wind_tunnel_size_obj),
+                )
+      
+    def set_wind_tunnel_size(self, wt_size = "moderate"):
+        
+        '''
+        Defines the size of the wind tunnel
+        
+        note: If a custom wind tunnel size is to be chosen, make sure to run 
+        the function set_custom_wt_size to define the size of the custom 
+        wind tunnel
+        
+        Parameters
+        ----------
+        wt_size : str Optional 
+            possiblity to choose from three different wind tunnel sizes 
+            modreate, large or custom sizing
 
-        result_dict = {}
-        for variable in variables:
-            result_dict[variable] = pd.DataFrame(
-                np.zeros((no_points, self.number_of_directions)),
-                columns=csv_list.keys())
+        Returns
+        -------
+        wind_tunnel_size_obj
+        
+        '''
+                
+        self.wind_tunnel_size =  wt_size
+        
+        if self.wind_tunnel_size  == "moderate" : 
+            
+            self.wind_tunnel_size_obj = sim_sdk.WindTunnelSizeModerate()
+        
+        elif self.wind_tunnel_size  == "large" : 
+            
+            self.wind_tunnel_size_obj = sim_sdk.WindTunnelSizeLarge()
+      
+        else : 
+            
+            self.wind_tunnel_size_obj  = sim_sdk.WindTunnelSizeCustom(
+                self.wind_tunnel_type,
+                self.height_extension, 
+                self.side_extension, 
+                self.inflow_extension, 
+                self.outflow_extension,
+                )
+                
+        return self.wind_tunnel_size_obj
+        
+    def set_custom_wt_size(self, height_ext, side_ext, inflow_ext, outflow_ext):
+        
+         '''
+         Defines the dimensions of the custom wind tunnel
+         
+         Parameters
+         ----------
+         height_ext : int 
+             height extension of the wind tunnel 
+             
+        side_ext : int 
+            side extension of the wind tunnel
+            
+        inflow_ext: int 
+            extension of the inlet face of the wind tunnel
+            
+        outflow_ext: int 
+            extension of the outlet face of the wind tunnel
+    
+         Returns
+         -------
+         None. 
+         
+         '''
+         self.wind_tunnel_type  = 'WIND_TUNNEL_SIZE_CUSTOM'
+         self.height_extension  = sim_sdk.DimensionalLength(height_ext, "m")
+         self.side_extension    = sim_sdk.DimensionalLength(side_ext, "m")
+         self.inflow_extension  = sim_sdk.DimensionalLength(inflow_ext, "m")
+         self.outflow_extension = sim_sdk.DimensionalLength(outflow_ext, "m")
+        
+    
+    def set_num_wind_directions(self, num_wind_dir): 
+        
+         '''
+         sets the number of wind directions to be submitted for simulation
+         
+         Parameters
+         ----------
+         num_wind_dir : int 
+             number of wind directions a choice from : 2, 4, 6, 8, 12, 16 ,36 
+             
+             note: 36 wind directions is only possible when the wind data is 
+             either manually imported or if the simulation is done using 
+             the City of London standard 
+             
+         Returns
+         -------
+         number_wind_directions  
+         
+         '''
+        
+         self.number_wind_directions = num_wind_dir
+            
+    def set_wind_engineering_standard(self, wind_eng_std):
+        
+        '''
+        set the wind engineering standard type 
+        
+        choice from : ["EU", "AS_NZS", "NEN8100", "LONDON"]
+        
+        Parameters
+        ----------
+        wind_eng_std: str 
+            a string of one of the standars mentioned above 
+            
+        Returns 
+        -------
+        wind_engineering_standard 
+        
+        '''
+        
+        self.wind_engineering_standard = wind_eng_std
+    
+    def set_wind_exposure_category(self, exposure_categories):
+        
+        '''
+        Set the wind exposure category associated with each incoming wind 
+        direction 
+        
+        The order of the expsure category list must start with north and progress
+        in a clockwise fashion
+                
+        choice from : ["EC1", "EC2", "EC3", "EC4", "EC5", "EC6"] 
+        
+        Parameters
+        ----------
+        exposure_categories: list 
+            list of the exposure categories of each respective wind direction            
+        Returns 
+        -------
+        exposure_category 
+        
+        '''
+        self.exposure_category = exposure_categories
+        
+    def set_surface_roughness(self, surface_roughness = True): 
+        
+        '''
+        Set the surface roughness of the wind tunnel floor
+        Based on the exposure cateogry of the each wind direction the surface
+        roughness of the wind tunnel floor would be mapped accordingly 
+        
+        Defaults is True 
+        
+        Parameters
+        ----------
+        surface_roughness: boolean 
+            option to add or ignore surface roughness 
+            
+        Returns 
+        -------
+        add_surface_roughness 
+        
+        '''
+        
+        self.add_surface_roughness = surface_roughness
+        
+    def set_wind_data_source(self, data_source): 
+        
+        '''
+        Sets the type of wind data import 
+        
+        Choice from : [METEOBLUE, USER_UPLOAD]    
+        
+        Parameters
+        ----------
+        data_source: str
+            string of the name of the wind data type 
+            
+        Returns 
+        -------
+        wind_data_source 
+        
+        '''
+        
+        self.wind_data_source = data_source 
+        
+    def set_geographical_location(self, latitude, longitude): 
+        '''
+        Set the coordinats of the location of interest 
+                
+        Parameters
+        ----------
+        latitude: float
+            latitudal coordinates
+        
+        longitude: float
+            longitudenal coordinates
+         
+        Returns 
+        -------
+        None.  
+        
+        '''
+        #For Meteoblue
+        self.latitude_meteoblue  = str(latitude)
+        self.longitude_meteoblue = str(longitude)
+        # Required for simulation setup and for manual wind data input
+        self.latitude  = sim_sdk.DimensionalAngle(latitude, "°")
+        self.longitude = sim_sdk.DimensionalAngle(longitude, "°")
+        
+        self.geo_location_obj = sim_sdk.GeographicalLocation(
+            latitude= self.latitude, 
+            longitude=self.longitude)       
 
-        for i, direction in enumerate(csv_list):
-            table = pd.read_csv(pathlib.Path(csv_list[direction]).as_posix())
-            df = nd.csv_to_dimensionless_df(self, table, variables, direction)
-            for column in df.columns:
-                result_dict[column][direction] = df[column]
+    def set_velocity_buckets(self): 
+        #create a function that allows the user to define up to 16 WD using 
+        #velocity buckets
+            pass 
+        
+    def set_wind_rose(self):
+    
+        '''
+        Based on the user choice, the logic for either setting the wind conditons 
+        using meteoblue or user upload is invoked. 
+        
+        note: 
+        The user upload method requires the addition of a function that would 
+        allow to define the velocity buckets (number of directions)
+                        
+        Parameters
+        ----------
 
-        self._create_point_file()
+        Returns 
+        -------
+        None.  
+        
+        '''
+        
+        if self.wind_data_source == "METEOBLUE" : 
+            
+            print("Importing wind data from Meteoblue..")
+            try:
+                wind_rose_response = self.wind_api.get_wind_data (self.latitude_meteoblue , 
+                                                                  self.longitude_meteoblue)
+                self.wind_rose = wind_rose_response.wind_rose
+                self.wind_rose.num_directions = self.number_wind_directions
+                self.wind_rose.exposure_categories = self.exposure_category # ["EC4"] * wind_rose.num_directions
+                self.wind_rose.wind_engineering_standard = self.wind_engineering_standard
+                self.wind_rose.add_surface_roughness = self.add_surface_roughness
+                
+            except sim_sdk.ApiException as ae:
+                if ae.status == 429:
+                    print(
+                        f"Exceeded max amount requests, please retry in {ae.headers.get('X-Rate-Limit-Retry-After-Minutes')} minutes")
+                    raise sim_sdk.ApiException(ae)
+                else:
+                    raise ae
+        
+        else: 
+            
+            print("Importing wind data from user input..")
+            
+            self.wind_rose = sim_sdk.WindRose(
+                num_directions= self.number_wind_directions, 
+                velocity_buckets=[
+                    sim_sdk.WindRoseVelocityBucket(_from=None, to=1.234, fractions=[0.1, 0.1, 0.1, 0.1]),
+                    sim_sdk.WindRoseVelocityBucket(_from=1.234, to=2.345, fractions=[0.0, 0.1, 0.1, 0.1]),
+                    sim_sdk.WindRoseVelocityBucket(_from=2.345, to=3.456, fractions=[0.0, 0.0, 0.1, 0.1]),
+                    sim_sdk.WindRoseVelocityBucket(_from=3.456, to=None, fractions=[0.0, 0.0, 0.0, 0.1]),
+                ],
+                velocity_unit= self.wind_velocity_unit,
+                exposure_categories= self.exposure_category,
+                wind_engineering_standard= self.wind_engineering_standard,
+                wind_data_source= self.wind_data_source ,
+                add_surface_roughness= self.add_surface_roughness ,
+            )
 
-        key = list(self.directional_csv_dict.keys())[0]
-        for variable in variables:
-            path = self.directional_csv_dict[key].with_name(
-                "dimensionless_{}".format(variable)).with_suffix(".feather")
+    def set_wind_conditions(self): 
+        
+        '''
+        Collects the geographical location and wind rose input and submits them
+        to the wind conditions setup of the simulation 
+        
+        Parameters
+        ----------
 
-            self.dimensionless_results[variable] = path
-            self.status.update_field_path(variable,
-                                          path.as_posix(),
-                                          is_dimensional=False)
+        Returns 
+        -------
+        None.  
+        
+        '''
+        self.wind_conditions = sim_sdk.WindConditions(
+            geographical_location= self.geo_location_obj,
+            wind_rose= self.wind_rose)
+    
+    def set_pedestrian_comfort_map_name(self, name): 
+        
+        '''
+        Define the name of the pedestrian comfort map 
+                
+        Parameters
+        ----------
+        name: str
+            name of the pedestrian comfort map 
+    
+        Returns 
+        -------
+        None.  
+        
+        '''
+        
+        self.pedestrian_surface_name = name
+    
+    def set_height_above_ground(self, height): 
+        
+        '''
+        Define the height above ground of the pedestrian comfort map 
+                
+        Parameters
+        ----------
+        height: float 
+            comfort map above ground height
+    
+        Returns 
+        -------
+        None.  
+        
+        '''
+        self.height_above_ground = sim_sdk.DimensionalLength(height, "m")
+        
+    
+    def set_pedestrian_comfort_ground(self, ground_type): 
+        
+        '''
+        Define the type of the pedestrian comfort map. Choice of: 
+            [absolute, relative]
+            
+        note: 
+            The logic for the relative comfort map is not implemented yet. 
+            Currently, only absolute comfort maps are supported
+                
+        Parameters
+        ----------
+        ground_type: str 
+            type of the pedestrian comfort map 
+    
+        Returns 
+        -------
+        None.  
+        
+        '''
+        
+        if ground_type == "absolute":
+        
+            self.comfort_ground_type = sim_sdk.GroundAbsolute()
+        
+        else: 
+            #Add code that allows the user to select a face and use that as 
+            # a comfort surface
+            pass
+        
+    
+    def set_pedestrian_comfort_map(self):
+        
+        '''
+        Submit the information of the pedestrian comfort map to the simulation 
+        setup
+                
+        Parameters
+        ----------
 
-            if self._check_is_reduce_needed():
-                idx = self._reduce_resolution_idx()
+        Returns 
+        -------
+        None.  
+        
+        '''
+        self.pedestrian_comfort_map = [    
+            sim_sdk.PedestrianComfortSurface(
+            name= self.pedestrian_surface_name,
+            height_above_ground=self.height_above_ground,
+            ground=self.comfort_ground_type)]
+            
+            
+    def add_more_comfort_maps(self,name,height,ground):
+        
+        '''
+        Allows the user to add more comfort maps depending on the height above 
+        ground
+                
+        Parameters
+        ----------
+        name: str 
+            name of the pedestrian comfort map 
+            
+        height: float 
+            comfort map above ground height
+                
+        ground_type: str 
+            type of the pedestrian comfort map 
+    
+        Returns 
+        -------
+        None.  
+        
+        '''
+        
+        self.pedestrian_comfort_map.append(   
+            sim_sdk.PedestrianComfortSurface(
+            name= name,
+            height_above_ground= sim_sdk.DimensionalLength(height, "m"), 
+            ground=self.comfort_ground_type))
+         
+    def set_maximum_run_time(self, max_run_time):
+        
+        '''
+        set the maximum runtime of the simulation 
+        Parameters
+        ----------
+        max_run_time: int
+        
+            maximum simulation runtime
+
+        Returns 
+        -------
+        None.  
+        
+        '''
+        
+        self.max_dir_run_time = sim_sdk.DimensionalTime(max_run_time, "s")
+    
+    def set_num_fluid_passes(self, fluid_pass = 3): 
+        
+        '''
+        set the number of fluid passes
+        Default is 3 
+        
+        Parameters
+        ----------
+        fluid_pass: int
+            number of fluid passes 
+            
+        Returns 
+        -------
+        None.  
+        
+        '''
+        self.num_of_fluid_passes = fluid_pass
+    
+    def set_simulation_control(self):
+        
+        '''
+        submit the simulation control settings to the simulation setup 
+        Default is 3 
+        
+        Parameters
+        ----------
+
+        Returns 
+        -------
+        None.  
+        
+        '''
+        self.sim_control = sim_sdk.WindComfortSimulationControl(
+            max_direction_run_time =self.max_dir_run_time, 
+            number_of_fluid_passes = self.num_of_fluid_passes)
+    
+    
+    def set_mesh_min_cell_size(self, min_cell_size): 
+        
+        '''
+        set the minimum cell size in case a 'TargetSize' meshing method is 
+        chosen
+        
+        Parameters
+        ----------
+        min_cell_size: float 
+            minimum cell size of the desired mesh            
+            
+        Returns 
+        -------
+        None.  
+        
+        '''
+        
+        self.min_cell_size = sim_sdk.DimensionalLength(min_cell_size, "m")
+        
+    def set_mesh_fineness(self,fineness): 
+        
+        '''
+        Set the fineness of the mesh 
+        
+        choice from: [VeryCoarse, Coarse, Moderate, Fine, VeryFine, TargetSize]
+        
+        Parameters
+        ----------
+        fineness: str 
+            fineness  of mesh to be generated             
+            
+        Returns 
+        -------
+        None.  
+        
+        '''
+        if fineness == "VeryCoarse": 
+            self.mesh_fineness = sim_sdk.PacefishFinenessVeryCoarse()
+            
+        elif fineness == "Coarse":
+            self.mesh_fineness = sim_sdk.PacefishFinenessCoarse()
+
+        elif fineness == "Moderate":
+            self.mesh_fineness = sim_sdk.PacefishFinenessModerate()
+
+        elif fineness == "Fine":
+            self.mesh_fineness = sim_sdk.PacefishFinenessFine()
+
+        elif fineness == "VeryFine":
+            self.mesh_fineness = sim_sdk.PacefishFinenessVeryFine()
+    
+        elif fineness == "TargetSize": 
+            
+            self.mesh_fineness = sim_sdk.PacefishFinenessTargetSize(
+            type ="TARGET_SIZE",
+            minimum_cell_size= self.min_cell_size)
+    
+                              
+    def set_reynolds_scaling(self, scaling = 1.0 , auto_scale = True):
+        
+        '''
+        Set the reynolds scaling of the simulation 
+        
+        Default is automatic reynolds scaling
+        
+        note: 
+            if auto_scale is set to True then the value of scaling is not 
+            taken into consideration 
+            
+        Parameters
+        ----------
+        scaling: float  
+            reynolds scaling factor 
+            
+        auto_scale: boolean 
+            True for autoscaling and False for manual scaling
+            
+        Returns 
+        -------
+        None.  
+        
+        '''
+        if auto_scale == True: 
+            
+            self.reynolds_scaling = sim_sdk.AutomaticReynoldsScaling(
+                            type='AUTOMATIC_REYNOLDS_SCALING')        
+        else: 
+            
+            self.reynolds_scaling = sim_sdk.ManualReynoldsScaling(
+                                        type='MANUAL_REYNOLDS_SCALING', 
+                                        reynolds_scaling_factor=scaling)
+            
+    def set_mesh_settings(self):
+        
+        '''
+        Submit the mesh settings to the simulation setup
+
+        Parameters
+        ----------
+
+        Returns 
+        -------
+        None.  
+        
+        '''
+        
+        self.mesh_master = sim_sdk.WindComfortMesh(
+                            wind_comfort_fineness= self.mesh_fineness,
+                            reynolds_scaling_type= self.reynolds_scaling)
+        
+    def set_simulation_spec(self, simulation_name):
+        
+        '''
+        Set the complete simulation spec and submit to the simulation setup 
+
+        Parameters
+        ----------
+
+        Returns 
+        -------
+        None.  
+        
+        '''
+                
+        self.model = sim_sdk.WindComfort(
+            region_of_interest= self.region_of_interest
+            ,
+            wind_conditions=  sim_sdk.WindConditions(
+                     geographical_location= self.geo_location_obj,
+                     wind_rose = self.wind_rose)
+            ,
+            pedestrian_comfort_map=
+                    self.pedestrian_comfort_map
+            ,
+            simulation_control= self.sim_control
+            ,
+            advanced_modelling=sim_sdk.AdvancedModelling(),
+            additional_result_export=sim_sdk.FluidResultControls(
+                transient_result_control=sim_sdk.TransientResultControl(
+                    write_control=sim_sdk.CoarseResolution(),
+                    fraction_from_end=0.1,
+                ),
+                statistical_averaging_result_control=sim_sdk.StatisticalAveragingResultControlV2(
+                    sampling_interval=sim_sdk.CoarseResolution(),
+                    fraction_from_end=0.1,
+                ),
+            ),
+            mesh_settings=self.mesh_master,
+        )
+
+        self.simulation_spec = sim_sdk.SimulationSpec(name=simulation_name, geometry_id= self.geometry_id, model=self.model)
+        
+        
+    def create_simulation(self):
+        
+        '''
+        Create the simulation setup based on the simulation spec 
+
+        Parameters
+        ----------
+
+        Returns 
+        -------
+        None.  
+        
+        '''
+        self.simulation_id = self.simulation_api.create_simulation(self.project_id, self.simulation_spec).simulation_id
+        print(f"simulationId: {self.simulation_id}")
+
+
+    def estimate_simulation(self):
+        '''
+        Provide an estimation of the maximum and minimum number of cells, 
+        the amount of resources to be used and the total estimated duration of 
+        the simulation 
+
+        Parameters
+        ----------
+
+        Returns 
+        -------
+        None.  
+        
+        '''
+        try:
+            estimation = self.simulation_api.estimate_simulation_setup(self.project_id, self.simulation_id)
+            # print(f"Simulation estimation: {estimation}\n")
+            print("*"*10)
+            print(f"Simulation estimation:")    
+            print("Number of cells: {i} - {k}".format(i = estimation.cell_count.interval_min,
+                                                     k = estimation.cell_count.interval_max ))
+            print("-"*10)
+            print("GPUh consumption: {i} - {k}".format(i = estimation.compute_resource.interval_min,
+                                                      k = estimation.compute_resource.interval_max ))
+            print("-"*10)
+            print("Simulation Time: {i} - {k}".format(i = estimation.duration.interval_min,
+                                                      k = estimation.duration.interval_max ))
+            print("*"*10)
+            
+            if estimation.compute_resource is not None and estimation.compute_resource.value > 10.0:
+                raise Exception("Too expensive", estimation)
+        
+            if estimation.duration is not None:
+                max_runtime = isodate.parse_duration(estimation.duration.interval_max).total_seconds()
+                max_runtime = max(3600, max_runtime * 2)
             else:
-                idx = result_dict[variable].index
-
-            result_dict[variable].loc[idx].reset_index().to_feather(path)
-
-        self.status.write_simulation_status()
+                max_runtime = 36000
+                print(f"Simulation estimated duration not available, assuming max runtime of {max_runtime} seconds")
+        except sim_sdk.ApiException as ae:
+            if ae.status == 422:
+                max_runtime = 36000
+                print(f"Simulation estimation not available, assuming max runtime of {max_runtime} seconds")
+            else:
+                raise ae
+              
+                
+    def check_simulation_setup(self):
         
-    def _create_hourly_continuous_windspeed(self, output_file='feather'):
         '''
-        Take houly continuous (HC) and dimensionless speed, return HC spatial.
-
-        use hourly continuous object to pass the meteological speeds and
-        directions.
+        Conduct a sanity check on the simulation setup before submitting for 
+        solve and report back an error message in the terminal in case the setup
+        is faulty 
         
-        Use _create_dimensionless_quantities()
-        '''
-        
-        epw_directions = self.weather_statistics.hourly_continuous._original_df['direction'].to_numpy().astype(float)
-        
-        epw_speeds = self.weather_statistics.hourly_continuous._original_df['speed'].to_numpy().astype(float)
-        
-        field_paths = self.status.field_paths["dimensionless_UMag"]
-        
-        def get_speeds(direction, reference_speed, keys):
-            '''
-            Take direction, speed and a clustered map key, return speed
-            
-            Based upon meteo data, return a wind speed result from the
-            closed solved wind direction and scaled to the defined speed.
-            
-            A PWC result here may have multiple maps, so we need to 
-            specify which also.
-
-            Parameters
-            ----------
-            direction : float
-                Wind direction as a float in compass angles.
-            reference_speed : float
-                The wind speed at the meteological station.
-            keys : str
-                The comfort map.
-
-            '''
-            
-            field_path = pathlib.Path(field_paths[keys])
-            
-            rounded_direction = round_direction(field_path, direction)
-            
-            field = pd.read_feather(field_path)[str(rounded_direction)]
-            speed = (field * reference_speed).values
-            
-            return np.reshape(speed, (-1, 1))
-        
-        mySpeedFunc = np.frompyfunc(get_speeds, 3, 1)
-        
-        
-        #Iterate the clustered maps
-        names = []
-        for key in field_paths.keys():
-            keys = np.repeat(key, len(epw_directions))
-            
-            hc_speeds = np.concatenate(mySpeedFunc(epw_directions, epw_speeds, keys), axis=1)
-            
-            self.hourly_continuous_results[key] = hc_speeds
-            
-            #we should really also add this to status, including, period.
-            field_path = pathlib.Path(field_paths[key])
-            
-            field = pd.read_feather(field_path)
-            index = field.index
-            
-            df = pd.DataFrame(hc_speeds, index=index)
-            df.columns = df.columns.astype("string")
-            self.hourly_continuous_results[key] = df
-            
-            if output_file =='feather':
-                speed_matric_path = self.result_directory / "speed_matrix_{}.feather".format(key)
-                df.reset_index().to_feather(speed_matric_path)
-            else: 
-                speed_matric_path = self.result_directory / "speed_matrix_{}.csv".format(key)
-                df.reset_index(drop=True).to_csv(speed_matric_path, 
-                                                 header=False, index=False)
-            
-            names.append(speed_matric_path.stem)
-            
-        return names
-
-    def _get_no_points(self):
-        '''
-        Takes a csv and returns the number of points in the comfort map
-
-        Returns
-        -------
-        int
-            An int, representing the number of points in the comfort plot.
-
-        '''
-        key = list(self.directional_csv_dict.keys())[0]
-        df = pd.read_csv(pathlib.Path(self.directional_csv_dict[key]).as_posix())
-        self.number_of_points = df.shape[0]
-        return self.number_of_points
-
-    def set_weather_statistics(self, weather_statistics):
-        '''
-        takes wether statistics and sets it for use in calulating comfort
-
         Parameters
         ----------
-        weather_statistics : weather statistics object
-            The weather statistics, i.e. processed to reveal probability 
-            that a wind speed and direction bin might occure.
 
-        Returns
+        Returns 
         -------
-        None.
-
+        None.  
+        
         '''
-        self.weather_statistics = weather_statistics
+        check = self.simulation_api.check_simulation_setup(self.project_id, self.simulation_id)
+        warnings = [entry for entry in check.entries if entry.severity == "WARNING"]
+        print(f"Simulation check warnings: {warnings}")
+        errors = [entry for entry in check.entries if entry.severity == "ERROR"]
+        if errors:            
+            raise Exception("Simulation check failed - Correct the following error:"
+                            , check.entries[0].message)
 
-    def set_comfort_criteria(self, comfort_criteria):
+    def start_simulation_run(self, run_name): 
+        
         '''
-        Takes the comfort criteria and sets it
-
+        Start the simulation run 
         Parameters
         ----------
-        comfort_criteria : comfort criteria object
-            The object repressenting the comfort critria.
 
-        Returns
+        Returns 
         -------
-        None.
-
-        '''
-        self.comfort_criteria = comfort_criteria
-
-    def calculate_wind_comfort(self):
-        '''
-        Calulates and saves the local comfort criteria
-
-        Returns
-        -------
-        None.
-
-        '''
-        variables = ['UMag']
-        self._create_dimensionless_quantities(variables=variables)
-        self._create_point_file()
-
-        variable_results = {}
-
-        for variable in variables:
-
-            result_file = self.dimensionless_results[variable]
-
-            gamma = pd.read_feather(result_file)
-            weibull_parameters = self.weather_statistics.weibull_parameters
-            comfort_criteria = self.comfort_criteria
-
-            shape = weibull_parameters.loc["shape", :].values
-            P = weibull_parameters.loc["probability", :].values
-            scale = weibull_parameters.loc["scale", :].values
-
-            speeds = []
-            for i in range(0, len(comfort_criteria.comfort_dict)):
-                speeds.append(comfort_criteria.comfort_dict[str(i)]["speed"])
-
-            gamma_shape = gamma.shape
-            X = gamma_shape[0]
-            Y = gamma_shape[1]
-            Z = len(comfort_criteria.comfort_dict)
-            frequency_table = np.ones([X, Y, Z])
-            iter_table = gamma.values
-
-            # need to iterate gamma now
-            it = np.nditer(iter_table, flags=['multi_index'], op_flags=['readwrite'])
-            while not it.finished:
-                freq = frequencies(speeds, params=[scale[it.multi_index[1]],
-                                                   shape[it.multi_index[1]],
-                                                   P[it.multi_index[1]],
-                                                   it[0]])
-
-                frequency_table[it.multi_index[0],
-                it.multi_index[1],
-                :] = freq
-
-                it.iternext()
-
-            point_total = frequency_table.sum(axis=1)
-            comfort_map = np.zeros(X)
-
-            for i in (list(range(0, len(comfort_criteria.comfort_dict)))):
-                if comfort_criteria.comfort_dict[str(i)]["frequency"][0] == "less":
-
-                    criteria = (comfort_criteria.comfort_dict[str(i)]["frequency"][1]) / 100
-                    is_exceeding = point_total[:, i] > criteria
-                    print(np.nanmax(point_total[:, i]),
-                          np.nanmin(point_total[:, i]),
-                          criteria)
-                    comfort_map[is_exceeding] = i + 1
-
-                elif comfort_criteria.comfort_dict[str(i)]["frequency"][0] == "greater":
-                    pass
-
-            variable_results[variable] = comfort_map
-
-        combined_array = np.zeros((X, len(variables)))
-        for i in range(0, len(variables)):
-            combined_array[:, i] = variable_results[variables[i]]
-
-        worst_case = combined_array.max(axis=0)
-
-        self.comfort_maps = {"worst_case": worst_case}
-
-        for variable in variables:
-            self.comfort_maps[variable] = variable_results[variable]
-
-        for key in self.comfort_maps.keys():
-            df = pd.DataFrame(
-                data=self.comfort_maps[key],
-                columns=["comfort"])
-
-            df.to_feather("comfort_map_{}_{}.feather".format(
-                key, self.comfort_criteria.name))
-
-    def set_resolution(self, resolution):
-        if type(resolution) != float:
-            raise Exception("resolution should be a float in meters")
-        self.minimum_resolution = resolution
-        self.status.minimum_resolution = resolution
-
-    def _check_is_reduce_needed(self):
-        if self.minimum_resolution > 0:
-            return True
-        else:
-            return False
-
-    def _reduce_resolution_idx(self):
-        '''
-        Take a fine point cloud, return a coarser one.
-
-        Parameters
-        ----------
-        points : dataframe
-            A dataframe of point locations with 3 columns, X, Y and Z, the 
-            number of rows is the number of points.
-        resolution : int or float
-            int or float, optional
-            an integer or float that represents the desired resolution in 
-            meters, for example, if we wanted an output sensor grid no 
-            finner than 5m then we can input 5.
-
-        Returns
-        -------
-        grid_candidate_center_id : list
-            The ID's of the points in the original points list to KEEP, 
-            i.e. if we reduce the resolution from 0.5m to 5m, which points 
-            closest represent an evenly spaced grid with spaces of 5m, the 
-            resulting grid will not be structured.
-
-        '''
-        points = self.coordinates.to_numpy()
-
-        voxel_size = self.minimum_resolution
-
-        non_empty_voxel_keys, inverse, nb_pts_per_voxel = np.unique(
-            ((points - np.min(points, axis=0)) // voxel_size).astype(int),
-            axis=0,
-            return_inverse=True,
-            return_counts=True)
-
-        idx_pts_vox_sorted = np.argsort(inverse)
-
-        voxel_grid = {}
-        ids_grid = {}
-
-        grid_barycenter = []
-        grid_candidate_center = []
-        grid_candidate_center_id = []
-        last_seen = 0
-
-        for idx, vox in enumerate(non_empty_voxel_keys):
-            voxel_grid[tuple(vox)] = points[
-                idx_pts_vox_sorted[last_seen:last_seen + nb_pts_per_voxel[idx]]]
-
-            ids_grid[tuple(vox)] = idx_pts_vox_sorted[
-                                   last_seen:last_seen + nb_pts_per_voxel[idx]]
-
-            # The geometric centre of a grid space
-            grid_barycenter.append(np.mean(voxel_grid[tuple(vox)], axis=0))
-
-            # The point closest to the centre of a grid space
-            grid_candidate_center.append(
-                voxel_grid[tuple(vox)][np.linalg.norm(voxel_grid[tuple(vox)]
-                                                      - np.mean(voxel_grid[tuple(vox)], axis=0), axis=1).argmin()])
-
-            # The ID of the same point
-            grid_candidate_center_id.append(
-                ids_grid[tuple(vox)][np.linalg.norm(voxel_grid[tuple(vox)]
-                                                    - np.mean(voxel_grid[tuple(vox)], axis=0), axis=1).argmin()])
-
-            last_seen += nb_pts_per_voxel[idx]
-            
+        None.  
         
-        return grid_candidate_center_id
-
-    def _cluster_points(self):
         '''
-        Take point ordinates, and split results into seperate point clouds
+        # Create simulation run
+        self.simulation_run = sim_sdk.SimulationRun(name="Run 1")
+        self.simulation_run = self.simulation_run_api.create_simulation_run(self.project_id, self.simulation_id, self.simulation_run)
+        self.run_id = self.simulation_run.run_id
+        print(f"runId: {self.run_id}")
         
-        This uses a clustering analysis to seperate the points list into
-        seperate point clouds that can represent different comfort plots.
-        
-        Returns
-        -------
-        None.
+        #Start Simulation Run 
+        self.simulation_run_api.start_simulation_run(self.project_id, self.simulation_id, self.run_id)
+        self.simulation_run = self.simulation_run_api.get_simulation_run(self.project_id, self.simulation_id, self.run_id)
 
-        '''
-        points_path = self.status.points_path
-        points_directory = pathlib.Path(points_path).parent
-
-        points = pd.read_feather(points_path)
-        points = points.set_index("index", drop=True)
-
-        clustering = DBSCAN(eps=self.minimum_resolution * 1.5, min_samples=5).fit(points.values)
-
-        cluster_index = pd.DataFrame(clustering.labels_, columns=["cluster"])
-        cluster_index_groups = list(cluster_index.groupby("cluster"))
-
-        cluster_index_lists = []
-        points_path_dict = {}
-        for group in cluster_index_groups:
-            cluster_index_lists.append(group[1].index)
-
-            cluster_points = points.iloc[group[1].index]
-            cluster_points = cluster_points.reset_index()
-
-            point_cluster_path = points_directory / "points{}.feather".format(group[0])
-
-            cluster_points.to_feather(point_cluster_path)
-            points_path_dict[str(group[0])] = point_cluster_path.as_posix()
-
-        self.status.points_path = points_path_dict
-        self.status.write_simulation_status()
-
-        return cluster_index_groups
-
-    def _cluster_fields(self, cluster_index_groups):
-        field_paths = self.status.field_paths
-
-        for key in field_paths.keys():
-            field_path_dict = {}
-            for group in cluster_index_groups:
-                field_path = pathlib.Path(field_paths[key])
-
-                field = pd.read_feather(field_path)
-                field = field.set_index("index", drop=True)
-
-                field_cluster_path = (field_path.parent
-                                      / (field_path.stem
-                                         + str(group[0])
-                                         + field_path.suffix))
-
-                cluster_field = field.iloc[group[1].index]
-                cluster_field = cluster_field.reset_index()
-
-                cluster_field.to_feather(field_cluster_path)
-                field_path_dict[str(group[0])] = field_cluster_path.as_posix()
-
-            field_paths[key] = field_path_dict
-
-        self.status.field_paths = field_paths
-        self.status.write_simulation_status()
-
-    def cluster_outputs(self):
-        cluster_index_groups = self._cluster_points()
-        self._cluster_fields(cluster_index_groups)
-
-
-class comfort_criteria():
-
-    def __init__(self, name):
-        self.name = name
-        self.comfort_dict = {}
-
-    def set_name(self, name):
-        self.name = name
-
-    def set_dict(self, _dict):
-        self.comfort_dict = _dict
-
-
-def frequencies(speeds, params):
-    scale, shape, P, gamma = params
-    bins = speeds / gamma
-    probabilities = (weibull_min.sf(bins, shape, 0, scale)) * P
-    return probabilities
-
-
-def all_equal(iterable):
-    g = groupby(iterable)
-    return next(g, True) and not next(g, False)
-
-
-def to_paraview(path, file):
-    data = pd.read_feather(path / file).reset_index(drop=True)
-    points = pd.read_feather(path / "points.feather").reset_index(drop=True)
-
-    columns = list(points.columns) + list(data.columns)
-
-    df = pd.concat([points, data], axis=1, ignore_index=True)
-    df.columns = columns
-    df.to_csv((path / file).with_suffix(".csv"))
-
-
-def round_direction(path, direction):
-    path = pathlib.Path(path)
-
-    df = pd.read_feather(path)
-    df = df.set_index("index", drop=True)
-    columns = df.columns.astype(float).to_numpy()
-
-    columns.sort()
-    columns = np.append(columns, columns[0] + 360)
-
-    interval = []
-    for i in range(0, len(columns) - 1):
-        interval.append((columns[i] + columns[i + 1]) / 2)
-
-    direction_bin = None
-    for i in range(0, len(interval)):
-        if i == 0:
-            if direction < interval[i] or direction >= interval[-1]:
-                direction_bin = i
-                break
-        else:
-            if direction >= interval[i - 1] and direction < interval[i]:
-                direction_bin = i
-                break
-
-    rounded_direction = columns[direction_bin]
-
-    return rounded_direction
-
-
-def reduce_resolution(points, resolution):
-    '''
-    Take a fine point cloud, return a coarser one.
-
-    Parameters
-    ----------
-    points : dataframe
-        A dataframe of point locations with 3 columns, X, Y and Z, the 
-        number of rows is the number of points.
-    resolution : int or float
-        int or float, optional
-        an integer or float that represents the desired resolution in 
-        meters, for example, if we wanted an output sensor grid no 
-        finner than 5m then we can input 5.
-
-    Returns
-    -------
-    grid_candidate_center_id : list
-        The ID's of the points in the original points list to KEEP, 
-        i.e. if we reduce the resolution from 0.5m to 5m, which points 
-        closest represent an evenly spaced grid with spaces of 5m, the 
-        resulting grid will not be structured.
-
-    '''
-    points = points.to_numpy()
-
-    voxel_size = resolution
-
-    non_empty_voxel_keys, inverse, nb_pts_per_voxel = np.unique(
-        ((points - np.min(points, axis=0)) // voxel_size).astype(int),
-        axis=0,
-        return_inverse=True,
-        return_counts=True)
-
-    idx_pts_vox_sorted = np.argsort(inverse)
-
-    voxel_grid = {}
-    ids_grid = {}
-
-    grid_barycenter = []
-    grid_candidate_center = []
-    grid_candidate_center_id = []
-    last_seen = 0
-
-    for idx, vox in enumerate(non_empty_voxel_keys):
-        voxel_grid[tuple(vox)] = points[
-            idx_pts_vox_sorted[last_seen:last_seen + nb_pts_per_voxel[idx]]]
-
-        ids_grid[tuple(vox)] = idx_pts_vox_sorted[
-                               last_seen:last_seen + nb_pts_per_voxel[idx]]
-
-        # The geometric centre of a grid space
-        grid_barycenter.append(np.mean(voxel_grid[tuple(vox)], axis=0))
-
-        # The point closest to the centre of a grid space
-        grid_candidate_center.append(
-            voxel_grid[tuple(vox)][np.linalg.norm(voxel_grid[tuple(vox)]
-                                                  - np.mean(voxel_grid[tuple(vox)], axis=0), axis=1).argmin()])
-
-        # The ID of the same point
-        grid_candidate_center_id.append(
-            ids_grid[tuple(vox)][np.linalg.norm(voxel_grid[tuple(vox)]
-                                                - np.mean(voxel_grid[tuple(vox)], axis=0), axis=1).argmin()])
-
-        last_seen += nb_pts_per_voxel[idx]
-
-    return grid_candidate_center_id
-
-
-def reduce_field(data, idx):
-    '''
-    Take dataframe and ID's, return a datafram with only data at ID's.
-
-    Parameters
-    ----------
-    data : dataframe
-        A dataframe or series of original data.
-    idx : list
-        A list of ID's we want to keep.
-
-    Returns
-    -------
-    data_of_reduced_resolution : dataframe
-
-    '''
-    data_of_reduced_resolution = data.iloc[idx]
-    return data_of_reduced_resolution
-
-
-class dimensionaliser():
-
-    def __init__(self, status):
-        self.status = status
-
-    def return_dimensional_speed(self, direction, reference_speed):
-        path = pathlib.Path(
-            self.status.field_paths["dimensionless_UMag"])
-
-        df = pd.read_feather(path)
-
-        direction = round_direction(path, direction)
-
-        speed = df[str(float(direction))] * float(reference_speed)
-
-        return speed
-
-    def return_points(self):
-        path = pathlib.Path(
-            self.status.points_path)
-
-        df = pd.read_feather(path)
-
-        return df
