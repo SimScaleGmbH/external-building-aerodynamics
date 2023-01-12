@@ -3,7 +3,7 @@ import pathlib
 import numpy as np
 
 import simscale_eba.HourlyContinuous as hc
-import simscale_eba.PedestrianWindComfort as pwc
+import simscale_eba.PWC_setup_results as pwc
 import simscale_eba.ResultProcessing as pp
 
 # Inputs

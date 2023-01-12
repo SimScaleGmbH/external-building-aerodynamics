@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
-import simscale_eba.PedestrianWindComfort as pwc
+import simscale_eba.PWC_setup_results as pwc
 import simscale_eba.HourlyContinuous as hc
 import simscale_eba.api_variables as api
 

@@ -5,7 +5,7 @@ import pathlib
 import csv
 
 import simscale_eba.HourlyContinuous as hc
-import simscale_eba.PedestrianWindComfort as pwc
+import simscale_eba.PWC_setup_results  as pwc
 import simscale_eba.pwc_status as stat
 
 def speed_to_json(path, speeds, directions):

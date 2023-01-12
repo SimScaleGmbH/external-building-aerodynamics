@@ -3,7 +3,7 @@ import pathlib
 import click
 import pandas as pd
 
-import simscale_eba.PedestrianWindComfort as pwc
+import simscale_eba.PWC_setup_results as pwc
 import simscale_eba.pwc_status as stat
 
 

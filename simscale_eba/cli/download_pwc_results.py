@@ -1,6 +1,6 @@
 import click
 
-import simscale_eba.PedestrianWindComfort as pwc
+import simscale_eba.PWC_setup_results as pwc
 
 
 @click.command("download-pwc-results")
