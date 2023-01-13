@@ -339,6 +339,7 @@ class WeatherStatistics():
         self.group_names = None
         self.groups = None
         self.weibull_parameters = None
+        self.total_probability = None
         self.maximum_values = None
         self.minimum_values = None
         self.standard_table = None
@@ -473,6 +474,15 @@ class WeatherStatistics():
             range_probability = cum_probability - probability_next
             
             df[direction] = range_probability * probability
+            
+        self.total_probability = np.sum(probability)
+        error = (1 - self.total_probability)
+        
+        if error < 0.01:
+            distribution = probability * 1/self.total_probability
+            missing_probablity = distribution * error
+            
+            df.iloc[:, 0] = df.iloc[:, 0] + missing_probablity
 
         self.standard_table = df.transpose()
 
