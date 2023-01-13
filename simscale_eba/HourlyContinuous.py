@@ -478,7 +478,7 @@ class WeatherStatistics():
         self.total_probability = np.sum(probability)
         error = (1 - self.total_probability)
         
-        if error < 0.01:
+        if error > 0.01:
             distribution = probability * 1/self.total_probability
             missing_probablity = distribution * error
             
