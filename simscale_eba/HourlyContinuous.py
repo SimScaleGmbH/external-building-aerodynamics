@@ -453,6 +453,27 @@ class WeatherStatistics():
             df[direction] = range_probability * float(directional_occurances[direction])
 
         self.standard_table = df.transpose()
+        
+    def standard_table_from_weibull(self):
+        df = pd.DataFrame(
+            np.zeros((len(self.speeds), len(self.directions))),
+            index=self.speeds,
+            columns=self.directions
+        )
+        
+        for direction in self.directions:
+            shape = self.weibull_parameters.loc["shape", direction]
+            scale = self.weibull_parameters.loc["scale", direction]
+
+            cum_probability = weibull_min.cdf(self.speeds, shape, 0, scale)
+            probability_next = np.roll(cum_probability, 1)
+            probability_next[0] = 0
+
+            range_probability = cum_probability - probability_next
+            
+            df[direction] = range_probability
+
+        self.standard_table = df.transpose()
 
     def check_sum_probability(self):
         df = self.standard_table

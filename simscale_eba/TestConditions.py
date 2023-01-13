@@ -7,6 +7,9 @@ Created on Fri Jul  2 17:52:11 2021
 import ladybug.epw as epw
 import numpy as np
 
+import pathlib
+import copy
+
 import simscale_eba.BoundaryLayer as abl
 
 
@@ -26,6 +29,9 @@ class WindData():
         self.reference_heights = {}
         self.meteo_correctors = {}
         self.directions = []
+        
+        self.dwt_paths = {}
+        self.dwt_roi = {}
 
     def set_atmospheric_boundary_layer(self,
                                        direction,
@@ -101,6 +107,31 @@ class WindData():
         self._hourly_wind_speed = epw_data.wind_speed
         self._hourly_direction = epw_data.wind_direction
         return epw_data
+    
+    def create_roi_for_dwt(self,
+                           direction,
+                           roi,
+                           nddwt):
+        '''
+        Create an Region of Interest object for each direction from DWT
+
+        Parameters
+        ----------
+        direction : float
+            An angle from north.
+        roi : RegionOfInterest
+            A region of Interest object.
+        nddwt : non_diectional_dwt
+            A non directional wind tunnel.
+
+        Returns
+        -------
+        None.
+
+        '''
+        
+        self.dwt_roi['{}'.format(direction)] = copy.deepcopy(roi)
+        self.dwt_roi['{}'.format(direction)].set_windtunnel_size(dwt=nddwt)
 
     def set_atmospheric_boundary_layers(self,
                                         directions=np.arange(0, 360, 30).tolist(),
@@ -173,9 +204,33 @@ class WindData():
 
             self.set_atmospheric_boundary_layer(str(_dir), profile)
             
-    def set_digital_wind_tunnel():
-        pass
-
+    def set_digital_wind_tunnels(self,
+                                 directionless_digital_wind_tunnel,
+                                 roi,
+                                 path = pathlib.Path.CWD(),
+                                 directions=np.arange(0, 360, 30).tolist(),
+                                 surface_roughness_list=(0.3 * np.ones(12)).tolist(),
+                                 reference_speeds=(10 * np.ones(12)).tolist(),
+                                 return_without_units=False):
+        
+        from dwt import non_diectional_dwt
+        
+        for (_dir,
+             z0,
+             reference_speed,
+             reference_height) in (zip(directions,
+                                       surface_roughness_list,
+                                       reference_speeds)):
+            
+            directionless_digital_wind_tunnel = non_diectional_dwt(z0)
+            
+            directionless_digital_wind_tunnel.create_dwt_from_nddwt(
+                direction=_dir,
+                path=path / {}.,
+                exclusion_radius)
+  
+            self.create_roi_for_dwt(_dir, roi, directionless_digital_wind_tunnel)
+            
 
 class WeatherPeriods():
 
