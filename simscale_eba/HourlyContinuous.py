@@ -464,6 +464,7 @@ class WeatherStatistics():
         for direction in self.directions:
             shape = self.weibull_parameters.loc["shape", direction]
             scale = self.weibull_parameters.loc["scale", direction]
+            probability = self.weibull_parameters.loc["probability", direction]
 
             cum_probability = weibull_min.cdf(self.speeds, shape, 0, scale)
             probability_next = np.roll(cum_probability, 1)
@@ -471,7 +472,7 @@ class WeatherStatistics():
 
             range_probability = cum_probability - probability_next
             
-            df[direction] = range_probability
+            df[direction] = range_probability * probability
 
         self.standard_table = df.transpose()
 
