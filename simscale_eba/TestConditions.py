@@ -226,8 +226,8 @@ class WindData():
             
             directionless_digital_wind_tunnel.create_dwt_from_nddwt(
                 direction=_dir,
-                path=path / {}.,
-                exclusion_radius)
+                path=path / '{}'.format(_dir),
+                exclusion_radius=300)
   
             self.create_roi_for_dwt(_dir, roi, directionless_digital_wind_tunnel)
             
