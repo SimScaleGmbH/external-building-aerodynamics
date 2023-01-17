@@ -483,7 +483,6 @@ class WeatherStatistics():
                            * 1/self.total_probability
                            
             missing_probablity = distribution * error
-            print(missing_probablity)
             
             df.iloc[0, :] = df.iloc[0, :] + missing_probablity
             
