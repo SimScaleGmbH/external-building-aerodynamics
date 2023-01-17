@@ -481,9 +481,11 @@ class WeatherStatistics():
         if error > 0.01:
             distribution = probability * 1/self.total_probability
             missing_probablity = distribution * error
-            
+            print(missing_probablity)
+            print(df.iloc[:, 0])
             df.iloc[:, 0] = df.iloc[:, 0] + missing_probablity
-
+            print(df.iloc[:, 0])
+            
         self.standard_table = df.transpose()
 
     def check_sum_probability(self):
