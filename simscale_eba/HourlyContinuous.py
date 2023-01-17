@@ -487,7 +487,7 @@ class WeatherStatistics():
             
             df.iloc[0, :] = df.iloc[0, :] + missing_probablity
             
-            self.total_probability = np.sum(df)
+            self.total_probability = np.sum(df.values)
             
         self.standard_table = df.transpose()
 
