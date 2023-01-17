@@ -213,7 +213,7 @@ class WindData():
                                  reference_speeds=(10 * np.ones(12)).tolist(),
                                  return_without_units=False):
         
-        from dwt import non_diectional_dwt
+        from dwt.create_dwt import non_diectional_dwt
         
         for (_dir,
              z0,
