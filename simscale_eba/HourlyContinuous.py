@@ -475,7 +475,7 @@ class WeatherStatistics():
             
             df[direction] = range_probability * probability
             
-        self.total_probability = np.sum(probability)
+        self.total_probability = np.sum(self.weibull_parameters.loc["probability"])
         error = (1 - self.total_probability)
         
         if error > 0.01:
