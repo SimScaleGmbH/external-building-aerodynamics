@@ -207,7 +207,7 @@ class WindData():
     def set_digital_wind_tunnels(self,
                                  directionless_digital_wind_tunnel,
                                  roi,
-                                 path = pathlib.Path.CWD(),
+                                 path = pathlib.Path.cwd(),
                                  directions=np.arange(0, 360, 30).tolist(),
                                  surface_roughness_list=(0.3 * np.ones(12)).tolist(),
                                  reference_speeds=(10 * np.ones(12)).tolist(),
