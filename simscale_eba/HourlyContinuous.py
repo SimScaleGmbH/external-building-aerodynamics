@@ -479,12 +479,14 @@ class WeatherStatistics():
         error = (1 - self.total_probability)
         
         if error > 0.01:
-            distribution = probability * 1/self.total_probability
+            distribution = self.weibull_parameters.loc["probability"]\
+                           * 1/self.total_probability
+                           
             missing_probablity = distribution * error
             print(missing_probablity)
-            print(df.iloc[:, 0])
-            df.iloc[:, 0] = df.iloc[:, 0] + missing_probablity
-            print(df.iloc[:, 0])
+            
+            df.iloc[0, :] = df.iloc[0, :] + missing_probablity
+            
             self.total_probability = np.sum(self.weibull_parameters.loc["probability"])
             
         self.standard_table = df.transpose()
