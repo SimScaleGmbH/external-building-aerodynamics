@@ -31,6 +31,7 @@ class WindData():
         self.directions = []
         
         self.dwt_paths = {}
+        self.dwt_objects = {}
         self.dwt_roi = {}
 
     def set_atmospheric_boundary_layer(self,
@@ -227,8 +228,18 @@ class WindData():
                 path=path / '{}'.format(_dir),
                 exclusion_radius=300)
   
-            self.create_roi_for_dwt(_dir, roi, directionless_digital_wind_tunnel)
+            dwt_object = self.create_roi_for_dwt(_dir, roi, 
+                                                 directionless_digital_wind_tunnel)
             
+            self.create_dwt_geometry(_dir, dwt_object)
+    
+    def create_dwt_geometry(self, direction, dwt_object):
+        
+        dwt_object.create_geometry()
+        
+        self.dwt_objects[direction] = dwt_object
+        self.dwt_paths[direction] = dwt_object.path
+        
 
 class WeatherPeriods():
 
