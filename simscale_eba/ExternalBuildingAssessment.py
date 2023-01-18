@@ -163,8 +163,9 @@ class PedestrianComfort():
         path_list = dwt.path.glob('*.stl')
         
         export_path = dwt.path / 'export.zip'
+        file_compress(path_list, export_path) 
         
-        self.dwt_geometry_paths[_dir] = file_compress(path_list, export_path) 
+        self.dwt_geometry_paths[_dir] = export_path
         
 
     def upload_geometry(self, name, path=None, units="m", _format="STL", facet_split=False):
