@@ -223,6 +223,8 @@ class WindData():
             
             directionless_digital_wind_tunnel = non_diectional_dwt(z0)
             
+            path / '{}'.format(_dir).mkdir(parents=True, exist_ok=True)
+            
             dwt_object = directionless_digital_wind_tunnel.create_dwt_from_nddwt(
                 direction=_dir,
                 path=path / '{}'.format(_dir),
