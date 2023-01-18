@@ -290,7 +290,7 @@ class PedestrianComfort():
 
         '''
         for _dir in dwt_tc.dwt_objects:
-            path = dwt_tc.dwt_objects[_dir].path
+            #dwt_path = dwt_tc.dwt_objects[_dir].path
             name = name + str(_dir)
             try:
                 sc.find_geometry(self, name)
