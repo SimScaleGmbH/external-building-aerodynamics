@@ -205,7 +205,6 @@ class WindData():
             self.set_atmospheric_boundary_layer(str(_dir), profile)
             
     def set_digital_wind_tunnels(self,
-                                 directionless_digital_wind_tunnel,
                                  roi,
                                  path = pathlib.Path.cwd(),
                                  directions=np.arange(0, 360, 30).tolist(),
@@ -217,8 +216,7 @@ class WindData():
         
         for (_dir,
              z0,
-             reference_speed,
-             reference_height) in (zip(directions,
+             reference_speed) in (zip(directions,
                                        surface_roughness_list,
                                        reference_speeds)):
             
