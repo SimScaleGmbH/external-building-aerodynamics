@@ -25,12 +25,14 @@ class PedestrianComfort():
 
         self.building_geom = None
         self.geometry_path = None
+        self.dwt_geometry_paths = {}
         self.geometry_name = None
 
         self.project_id = None
         self.simulation_id = None
         self.run_ids = {}
         self.geometry_id = None
+        self.directional_geometry_id = {}
         self.storage_id = None
         self.flow_domain_id = None
         self.direction_flow_domain_ids = {}
@@ -115,6 +117,55 @@ class PedestrianComfort():
 
         '''
         self.geometry_path = geometry_path
+        
+    def set_dwt_geometry(self, _dir, dwt, geometry_path=None):
+        
+        def file_compress(inp_file_names, out_zip_file):
+            """
+            function : file_compress
+            args : inp_file_names : list of filenames to be zipped
+            out_zip_file : output zip file
+            return : none
+            assumption : Input file paths and this code is in same directory.
+            """
+            
+            '''
+            https://www.tutorialspoint.com/how-to-compress-files-with-zipfile-module-in-python
+            '''
+            import zipfile
+            # Select the compression mode ZIP_DEFLATED for compression
+            # or zipfile.ZIP_STORED to just store the file
+            compression = zipfile.ZIP_DEFLATED
+            print(f" *** Input File name passed for zipping - {inp_file_names}")
+            
+            # create the zip file first parameter path/name, second mode
+            print(f' *** out_zip_file is - {out_zip_file}')
+            zf = zipfile.ZipFile(out_zip_file, mode="w")
+            
+            try:
+                for file_to_write in inp_file_names:
+                    # Add file to the zip file
+                    # first parameter file to zip, second filename in zip
+                    print(f' *** Processing file {file_to_write}')
+                    zf.write(file_to_write, arcname=file_to_write.name, compress_type=compression)
+            
+            except FileNotFoundError as e:
+                print(f' *** Exception occurred during zip process - {e}')
+            finally:
+                # Don't forget to close the file!
+                zf.close()
+        
+        if geometry_path != None:
+            import zipfile
+            with zipfile.ZipFile(geometry_path, 'r') as zip_ref:
+                zip_ref.extractall(dwt.path)
+                
+        path_list = dwt.path.glob('*.stl')
+        
+        export_path = dwt.path / 'export.zip'
+        
+        self.dwt_geometry_paths[_dir] = file_compress(path_list, export_path) 
+        
 
     def upload_geometry(self, name, path=None, units="m", _format="STL", facet_split=False):
         '''
@@ -192,6 +243,88 @@ class PedestrianComfort():
                 geometry_import = self.geometry_import_api.get_geometry_import(self.project_id, geometry_import_id)
                 print(f'Geometry import status: {geometry_import.status}')
             self.geometry_id = geometry_import.geometry_id
+            
+    def _upload_dwt_geometry(self, 
+                             name, 
+                             dwt_tc=None, 
+                             path=None, 
+                             units="m", _format="STL", facet_split=False):
+        '''
+        Upload a geometry to the SimScale platform to a preassigned project.
+        
+        This is a modified version of the upload coad from the API examples.
+
+        Parameters
+        ----------
+        name : str
+            The name given to the geometry.
+        path : pathlib.Path, optional
+            The path to a geometry to upload. 
+            
+            The default is predefined.
+            
+        units : str, optional
+            the unit in which to upload the geometry to SimScale.
+            
+            The default is "m".
+            
+        _format : str, optional
+            The file format. 
+            
+            The default is "STL".
+            
+        facet_split : bool, optional
+            Decide on weather to split facet geometry (such as .stl file 
+            types). We prefer not to do this for API use.
+            
+            The default is False.
+
+        Raises
+        ------
+        TimeoutError
+            DESCRIPTION.
+
+        Returns
+        -------
+        None.
+
+        '''
+        for _dir in dwt_tc.dwt_objects:
+            path = dwt_tc.dwt_objects[_dir].path
+            name = name + str(_dir)
+            try:
+                sc.find_geometry(self, name)
+                print("Cannot upload geometry with the same name, using existing geometry")
+            except:
+                self.set_dwt_geometry(_dir, dwt_tc.dwt_objects[_dir], path)
+    
+                storage = self.storage_api.create_storage()
+                with open(self.dwt_geometry_paths[_dir], 'rb') as file:
+                    self.api_client.rest_client.PUT(url=storage.url, headers={'Content-Type': 'application/octet-stream'},
+                                                    body=file.read())
+                self.storage_id = storage.storage_id
+    
+                geometry_import = sim.GeometryImportRequest(
+                    name=name,
+                    location=sim.GeometryImportRequestLocation(self.storage_id),
+                    format=_format,
+                    input_unit=units,
+                    options=sim.GeometryImportRequestOptions(facet_split=facet_split, sewing=False, improve=True,
+                                                             optimize_for_lbm_solver=True),
+                )
+    
+                geometry_import = self.geometry_import_api.import_geometry(self.project_id, geometry_import)
+                geometry_import_id = geometry_import.geometry_import_id
+    
+                geometry_import_start = time.time()
+                while geometry_import.status not in ('FINISHED', 'CANCELED', 'FAILED'):
+                    # adjust timeout for larger geometries
+                    if time.time() > geometry_import_start + 900:
+                        raise TimeoutError()
+                    time.sleep(10)
+                    geometry_import = self.geometry_import_api.get_geometry_import(self.project_id, geometry_import_id)
+                    print(f'Geometry import status: {geometry_import.status}')
+                self.directional_geometry_id[_dir] = geometry_import.geometry_id
 
     def set_region_of_interest(self, roi):
         self.region_of_interest = roi
