@@ -223,13 +223,13 @@ class WindData():
             
             directionless_digital_wind_tunnel = non_diectional_dwt(z0)
             
-            directionless_digital_wind_tunnel.create_dwt_from_nddwt(
+            dwt_object = directionless_digital_wind_tunnel.create_dwt_from_nddwt(
                 direction=_dir,
                 path=path / '{}'.format(_dir),
                 exclusion_radius=300)
   
-            dwt_object = self.create_roi_for_dwt(_dir, roi, 
-                                                 directionless_digital_wind_tunnel)
+            self.create_roi_for_dwt(_dir, roi, 
+                                    directionless_digital_wind_tunnel)
             
             self.create_dwt_geometry(_dir, dwt_object)
     
