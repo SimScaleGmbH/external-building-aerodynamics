@@ -306,7 +306,7 @@ class PedestrianComfort():
                 self.storage_id = storage.storage_id
     
                 geometry_import = sim.GeometryImportRequest(
-                    name=name,
+                    name=name_dir,
                     location=sim.GeometryImportRequestLocation(self.storage_id),
                     format=_format,
                     input_unit=units,
