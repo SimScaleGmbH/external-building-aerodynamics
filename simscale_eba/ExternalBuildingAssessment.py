@@ -292,9 +292,9 @@ class PedestrianComfort():
         '''
         for _dir in dwt_tc.dwt_objects:
             #dwt_path = dwt_tc.dwt_objects[_dir].path
-            name = name + str(_dir)
+            name_dir = name + str(_dir)
             try:
-                sc.find_geometry(self, name)
+                sc.find_geometry(self, name_dir)
                 print("Cannot upload geometry with the same name, using existing geometry")
             except:
                 self.set_dwt_geometry(_dir, dwt_tc.dwt_objects[_dir], path)
