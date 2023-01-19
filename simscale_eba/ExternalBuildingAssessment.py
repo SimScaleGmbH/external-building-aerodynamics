@@ -572,7 +572,7 @@ class PedestrianComfort():
                              number_of_fluid_passes=3
                              ):
         
-        default_dir = self.direction_flow_domain_ids.keys()[0]
+        default_dir = list(self.direction_flow_domain_ids.keys())[0]
         
         self._init_model()
         self._init_default_wind_tunnel()
