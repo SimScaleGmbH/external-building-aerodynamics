@@ -432,7 +432,13 @@ class PedestrianComfort():
     def _get_simulation_length(self, number_of_fluid_passes=3, direction=None):
         if direction == None:
             direction = list(self.direction_flow_domain_ids.keys())[0]
-        wt_length = self.region_of_interest._wt_length
+            
+        if len(self.directional_region_of_interest.keys()) > 0:
+            roi = self.directional_region_of_interest[direction]
+        else:
+            roi = self.region_of_interest
+            
+        wt_length = roi._wt_length
         
         reference_speed = self.test_conditions.reference_speeds[str(direction)].m
         
@@ -440,13 +446,14 @@ class PedestrianComfort():
         
         return time
     
-    def _set_simulation_length(self, number_of_fluid_passes):
+    def _set_simulation_length(self, number_of_fluid_passes, direction):
         
         self.simulation_model.\
             simulation_control.\
             end_time.\
             value = self._get_simulation_length(number_of_fluid_passes=\
-                                                    number_of_fluid_passes)
+                                                    number_of_fluid_passes,
+                                                    direction=direction)
         
     def _init_default_wind_abl(self):
         '''
@@ -561,16 +568,22 @@ class PedestrianComfort():
         self.vertical_slice = _slice.geometry_primitive_id
     
     def _create_default_spec(self, 
-                             fineness = 'COARSE', 
-                             number_of_fluid_passes=3,
+                             direction,
+                             fineness='COARSE', 
+                             number_of_fluid_passes=3
                              ):
+        
+        default_dir = self.direction_flow_domain_ids.keys()[0]
+        
         self._init_model()
         self._init_default_wind_tunnel()
         self._init_default_wind_abl()
         if self.building_geom == None:
             self._get_geometry_map()
+            
         self._set_buildings_as_mesh_entities()
-        self._set_simulation_length(number_of_fluid_passes=number_of_fluid_passes)
+        self._set_simulation_length(number_of_fluid_passes=number_of_fluid_passes,
+                                    direction=default_dir)
         self._set_probe_plots()
         
         self.set_mesh_fineness(fineness)
@@ -588,7 +601,6 @@ class PedestrianComfort():
         
     
     def create_default_simulation(self, fineness = 'COARSE', number_of_fluid_passes=3):
-        
         self._create_default_spec(fineness=fineness,
                                   number_of_fluid_passes=number_of_fluid_passes)
         
