@@ -427,7 +427,7 @@ class PedestrianComfort():
                     value=self.region_of_interest._radius*2, unit="m")
                 )
         
-        self._create_vertical_slice()
+        self._create_vertical_slice(direction)
         
     def _get_simulation_length(self, number_of_fluid_passes=3, direction=None):
         if direction == None:
@@ -515,7 +515,7 @@ class PedestrianComfort():
              value.value.\
              result_index = [4]
         
-    def _create_vertical_slice(self):
+    def _create_vertical_slice(self, direction=None):
         '''
         Creates a vertical slice for assessing the ABL accross the domain
 
@@ -524,9 +524,14 @@ class PedestrianComfort():
         None.
 
         '''
-        X = self.region_of_interest._centre[0]
-        Y = self.region_of_interest._centre[1]
-        Z = self.region_of_interest._ground_height
+        if len(self.directional_region_of_interest.keys()) > 0:
+            roi = self.directional_region_of_interest[direction]
+        else:
+            roi = self.region_of_interest
+            
+        X = roi._centre[0]
+        Y = roi._centre[1]
+        Z = roi._ground_height
 
         reference_point = sim.DimensionalVectorLength(value=sim.DecimalVector(x=X, y=Y, z=Z), unit='m')
         normal = sim.DimensionalVectorLength(value=sim.DecimalVector(x=0, y=1, z=0), unit='m')
