@@ -60,6 +60,7 @@ class PedestrianComfort():
 
         self.test_conditions = None
         self.region_of_interest = None
+        self.directional_region_of_interest = {}
         self.number_of_fluid_passes = 3
         self.advanced_modelling = None
         self.surface_roughness = 0
@@ -292,7 +293,7 @@ class PedestrianComfort():
         '''
         for _dir in dwt_tc.dwt_objects:
             #dwt_path = dwt_tc.dwt_objects[_dir].path
-            name_dir = name + str(_dir)
+            name_dir = name + ', Direction ' + str(_dir)
             try:
                 sc.find_geometry(self, name_dir)
                 print("Cannot upload geometry with the same name, using existing geometry")
@@ -333,6 +334,15 @@ class PedestrianComfort():
         if self.test_conditions != None:
             for direction in self.test_conditions.directions:
                 self._create_wind_tunnel(direction=direction)
+                
+    def _set_directional_region_of_interest_from_dwt_tc(self, dwt_tc):
+        '''
+        Internal use only
+        '''
+        self.directional_region_of_interest = dwt_tc.dwt_roi
+        
+        for direction in self.directional_region_of_interest:
+            self._create_wind_tunnel_from_directional_roi(direction=direction)
         
     def set_wind_conditions(self, WindData):
         '''
@@ -402,12 +412,20 @@ class PedestrianComfort():
     def _set_wind_tunnel(self, direction):
         self.simulation_model.bounding_box_uuid = self.direction_flow_domain_ids[direction]
         
-        self.simulation_model.\
-        mesh_settings_new.\
-        reference_length_computation = sim.ManualReferenceLength(
-            value=sim.DimensionalTime(
-                value=self.region_of_interest._radius*2, unit="m")
-            )
+        if len(self.directional_region_of_interest.keys()) > 0:
+            self.simulation_model.\
+            mesh_settings_new.\
+            reference_length_computation = sim.ManualReferenceLength(
+                value=sim.DimensionalTime(
+                    value=self.directional_region_of_interest[direction]._radius*2, unit="m")
+                )
+        else:
+            self.simulation_model.\
+            mesh_settings_new.\
+            reference_length_computation = sim.ManualReferenceLength(
+                value=sim.DimensionalTime(
+                    value=self.region_of_interest._radius*2, unit="m")
+                )
         
         self._create_vertical_slice()
         
@@ -603,6 +621,40 @@ class PedestrianComfort():
                 value=sim.DecimalVector(x=self.region_of_interest._centre[0],
                                         y=self.region_of_interest._centre[1],
                                         z=self.region_of_interest._ground_height),
+                unit='m'
+            ),
+
+            rotation_angles=sim.DimensionalVectorAngle(value=sim.DecimalVector(
+                x=0, y=0, z=-90 - float(direction)),
+                unit='°'),
+        )
+        self.flow_domain = external_flow_domain
+            
+        self.direction_flow_domain_ids[
+            direction] = self.simulation_api.create_geometry_primitive(
+                self.project_id,
+                external_flow_domain).geometry_primitive_id
+                
+    def _create_wind_tunnel_from_directional_roi(self, direction=0):
+        
+        external_flow_domain = sim.RotatableCartesianBox(
+            name='External Flow Domain',
+            max=sim.DimensionalVectorLength(value=sim.DecimalVector(
+                x=self.directional_region_of_interest[direction]._wt_maximum_point[0],
+                y=self.directional_region_of_interest[direction]._wt_maximum_point[1],
+                z=self.directional_region_of_interest[direction]._wt_maximum_point[2]),
+                unit='m'),
+
+            min=sim.DimensionalVectorLength(value=sim.DecimalVector(
+                x=self.directional_region_of_interest[direction]._wt_minimum_point[0],
+                y=self.directional_region_of_interest[direction]._wt_minimum_point[1],
+                z=self.directional_region_of_interest[direction]._wt_minimum_point[2]),
+                unit='m'),
+
+            rotation_point=sim.DimensionalVectorLength(
+                value=sim.DecimalVector(x=self.directional_region_of_interest[direction]._centre[0],
+                                        y=self.directional_region_of_interest[direction]._centre[1],
+                                        z=self.directional_region_of_interest[direction]._ground_height),
                 unit='m'
             ),
 
