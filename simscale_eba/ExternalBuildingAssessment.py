@@ -297,6 +297,7 @@ class PedestrianComfort():
             try:
                 sc.find_geometry(self, name_dir)
                 print("Cannot upload geometry with the same name, using existing geometry")
+                self.directional_geometry_id[_dir] = self.geometry_id
             except:
                 self.set_dwt_geometry(_dir, dwt_tc.dwt_objects[_dir], path)
     
@@ -586,9 +587,16 @@ class PedestrianComfort():
         self._set_probe_plots()
         
         self.set_mesh_fineness(fineness)
-        self.simulation_spec = sim.SimulationSpec(name=self.name, 
-                                                  geometry_id=self.geometry_id, 
-                                                  model=self.simulation_model)        
+        
+        if len(self.dwt_geometry_paths.keys()) > 0:
+            self.simulation_spec = sim.SimulationSpec(name=self.name, 
+                                                      geometry_id=self.dwt_geometry_paths[default_dir], 
+                                                      model=self.simulation_model)  
+            
+        else:
+            self.simulation_spec = sim.SimulationSpec(name=self.name, 
+                                                      geometry_id=self.geometry_id, 
+                                                      model=self.simulation_model)        
     
     def set_manual_reynolds_scaling(self, reynolds_scale=1):
         
