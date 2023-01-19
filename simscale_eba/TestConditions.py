@@ -210,7 +210,7 @@ class WindData():
                                  path = pathlib.Path.cwd(),
                                  directions=np.arange(0, 360, 30).tolist(),
                                  surface_roughness_list=(0.3 * np.ones(12)).tolist(),
-                                 reference_speeds=(10 * np.ones(12)).tolist(),
+                                 reference_speeds=(15 * np.ones(12)).tolist(),
                                  return_without_units=False):
         
         from dwt.create_dwt import non_diectional_dwt
@@ -234,6 +234,16 @@ class WindData():
                                     directionless_digital_wind_tunnel)
             
             self.create_dwt_geometry(_dir, dwt_object)
+            
+        self.set_atmospheric_boundary_layers(directions=directions,
+                                             surface_roughness_list=surface_roughness_list,
+                                             reference_speeds=reference_speeds,
+                                             reference_heights=(10 * np.ones(len(reference_speeds))).tolist(),
+                                             method_dict={"u": "UNIFORM",
+                                                          "tke": "YGCJ",
+                                                          "omega": "YGCJ"
+                                                          },
+                                             return_without_units=False)
     
     def create_dwt_geometry(self, direction, dwt_object):
         
