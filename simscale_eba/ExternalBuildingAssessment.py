@@ -568,7 +568,6 @@ class PedestrianComfort():
         self.vertical_slice = _slice.geometry_primitive_id
     
     def _create_default_spec(self, 
-                             direction,
                              fineness='COARSE', 
                              number_of_fluid_passes=3
                              ):
