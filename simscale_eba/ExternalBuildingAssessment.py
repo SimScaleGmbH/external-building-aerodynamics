@@ -588,7 +588,7 @@ class PedestrianComfort():
         
         self.set_mesh_fineness(fineness)
         
-        if len(self.dwt_geometry_paths.keys()) > 0:
+        if len(self.directional_geometry_id.keys()) > 0:
             self.simulation_spec = sim.SimulationSpec(name=self.name, 
                                                       geometry_id=self.directional_geometry_id[default_dir_geom], 
                                                       model=self.simulation_model)  
@@ -596,6 +596,7 @@ class PedestrianComfort():
                 self._get_geometry_map(default_dir_geom)
             
         else:
+            print('single_dir')
             self.simulation_spec = sim.SimulationSpec(name=self.name, 
                                                       geometry_id=self.geometry_id, 
                                                       model=self.simulation_model)  
