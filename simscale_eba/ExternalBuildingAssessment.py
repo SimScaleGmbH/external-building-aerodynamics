@@ -578,10 +578,9 @@ class PedestrianComfort():
         self._init_model()
         self._init_default_wind_tunnel()
         self._init_default_wind_abl()
-        if self.building_geom == None:
-            self._get_geometry_map()
+        
             
-        self._set_buildings_as_mesh_entities()
+        
         self._set_simulation_length(number_of_fluid_passes=number_of_fluid_passes,
                                     direction=default_dir)
         self._set_probe_plots()
@@ -592,11 +591,16 @@ class PedestrianComfort():
             self.simulation_spec = sim.SimulationSpec(name=self.name, 
                                                       geometry_id=self.dwt_geometry_paths[default_dir], 
                                                       model=self.simulation_model)  
+            if self.building_geom == None:
+                self._get_geometry_map(default_dir)
             
         else:
             self.simulation_spec = sim.SimulationSpec(name=self.name, 
                                                       geometry_id=self.geometry_id, 
-                                                      model=self.simulation_model)        
+                                                      model=self.simulation_model)  
+            if self.building_geom == None:
+                self._get_geometry_map()
+            
     
     def set_manual_reynolds_scaling(self, reynolds_scale=1):
         
@@ -693,7 +697,7 @@ class PedestrianComfort():
                 self.project_id,
                 external_flow_domain).geometry_primitive_id
     
-    def _get_geometry_map(self, names=['BUILDING_OF_INTEREST', 'CONTEXT']):
+    def _get_geometry_map(self, _dir=None, names=['BUILDING_OF_INTEREST', 'CONTEXT']):
         '''
         get the map of geometry from a CAD.
         
@@ -706,9 +710,17 @@ class PedestrianComfort():
 
         '''
         project_id = self.project_id
-        geometry_id = self.geometry_id
-        maps = self.geometry_api.get_geometry_mappings(project_id, geometry_id, _class='body')
         
+        if (_dir==None) and not (len(self.dwt_geometry_paths.keys()) > 0):
+            geometry_id = self.geometry_id
+            
+        elif (_dir!=None) and (len(self.dwt_geometry_paths.keys()) > 0):
+            geometry_id = self.directional_geometry_id[_dir]
+        else:
+            raise ('Direction not supplied')
+            
+        maps = self.geometry_api.get_geometry_mappings(project_id, geometry_id, _class='body')
+            
         if len(maps.embedded) == 1:
             mesh_geom = maps.embedded[0]
             self.building_geom = [mesh_geom.name]
