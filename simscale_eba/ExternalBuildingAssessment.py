@@ -573,7 +573,8 @@ class PedestrianComfort():
                              number_of_fluid_passes=3
                              ):
         
-        default_dir = list(self.direction_flow_domain_ids.keys())[0]
+        default_dir_fd = list(self.direction_flow_domain_ids.keys())[0]
+        default_dir_geom = list(self.directional_geometry_id.keys())[0]
         
         self._init_model()
         self._init_default_wind_tunnel()
@@ -582,17 +583,17 @@ class PedestrianComfort():
             
         
         self._set_simulation_length(number_of_fluid_passes=number_of_fluid_passes,
-                                    direction=default_dir)
+                                    direction=default_dir_fd)
         self._set_probe_plots()
         
         self.set_mesh_fineness(fineness)
         
         if len(self.dwt_geometry_paths.keys()) > 0:
             self.simulation_spec = sim.SimulationSpec(name=self.name, 
-                                                      geometry_id=self.dwt_geometry_paths[default_dir], 
+                                                      geometry_id=self.directional_geometry_id[default_dir_geom], 
                                                       model=self.simulation_model)  
             if self.building_geom == None:
-                self._get_geometry_map(default_dir)
+                self._get_geometry_map(default_dir_geom)
             
         else:
             self.simulation_spec = sim.SimulationSpec(name=self.name, 
