@@ -1,5 +1,6 @@
 import pathlib
 import time
+import uuid
 
 import simscale_sdk as sim
 import pandas as pd
@@ -24,8 +25,10 @@ class PedestrianComfort():
         self.simulation_model = None
 
         self.building_geom = None
+        self.geometry_mappings = {}
         self.geometry_path = None
-        self.dwt_geometry_paths = {}
+        self.dwt_geometry_paths = {} #If geometry with same names are already 
+                                     #uploaded, these paths will not be populated
         self.geometry_name = None
 
         self.project_id = None
@@ -50,6 +53,7 @@ class PedestrianComfort():
         self.vertical_slice = None
         self.grid = {}
         self.plot_ids = []
+        self.directional_plot_ids = {}
         self.run_number = run_number
         
         # SimScale Authentication
@@ -574,7 +578,6 @@ class PedestrianComfort():
                              ):
         
         default_dir_fd = list(self.direction_flow_domain_ids.keys())[0]
-        default_dir_geom = list(self.directional_geometry_id.keys())[0]
         
         self._init_model()
         self._init_default_wind_tunnel()
@@ -589,9 +592,12 @@ class PedestrianComfort():
         self.set_mesh_fineness(fineness)
         
         if len(self.directional_geometry_id.keys()) > 0:
+            default_dir_geom = list(self.directional_geometry_id.keys())[0]
+            
             self.simulation_spec = sim.SimulationSpec(name=self.name, 
                                                       geometry_id=self.directional_geometry_id[default_dir_geom], 
                                                       model=self.simulation_model)  
+            
             if self.building_geom == None:
                 self._get_geometry_map(default_dir_geom)
             
@@ -702,9 +708,6 @@ class PedestrianComfort():
     def _get_geometry_map(self, _dir=None, names=['BUILDING_OF_INTEREST', 'CONTEXT']):
         '''
         get the map of geometry from a CAD.
-        
-        Currently this only supports single layer STL files, but will 
-        be expanded to take many layers conforming to a naming convention.
 
         Returns
         -------
@@ -737,6 +740,41 @@ class PedestrianComfort():
                         
             self.building_geom = entities
             
+    def _set_geometry_map(self, map_name:str, names=['BUILDING_OF_INTEREST', 'CONTEXT']):
+        mapping_name = map_name
+        self.geometry_mappings[mapping_name] = {}
+        
+        self.geometry_mappings[mapping_name]['body_names'] = names
+        
+    def _get_geometry_maps(self):
+        for _map in self.geometry_mappings.keys():
+            names = self.geometry_mappings[_map]['body_names']
+            for geometry in self.directional_geometry_id.keys():
+                maps = self.geometry_api.\
+                    get_geometry_mappings(self.project_id, 
+                                          self.directional_geometry_id[geometry], 
+                                          _class='body')
+                    
+                entities = []
+                for entity in maps.embedded:
+                    for attribute in entity.originate_from:
+                        if attribute.body in names:
+                            entities.append(entity.name)
+                
+                self.geometry_mappings[_map][geometry] = entities
+                
+    def _set_map_as_mesh_roi(self, map_name, direction):
+        mesh_roi = self.geometry_mappings[map_name][direction]
+        
+        self.simulation_model.\
+            mesh_settings_new.\
+            primary_topology.\
+            topological_reference.\
+            entities = mesh_roi
+            
+    def _update_geometry(self, geometry_id):
+        self.simulation_spec.geometry_id = geometry_id
+    
     def _set_buildings_as_mesh_entities(self):
         
         self.simulation_model.\
@@ -905,6 +943,12 @@ class PedestrianComfort():
         '''
         directions = self.get_wind_directions()
         for key in directions:
+            
+            if len(self.directional_geometry_id.keys()) > 0:
+                pass
+            
+            if len(self.directional_plot_ids.keys()) > 0:
+                pass
             
             self._set_abl_table(key)
             self._set_wind_tunnel(str(key))
