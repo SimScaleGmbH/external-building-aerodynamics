@@ -713,15 +713,15 @@ class PedestrianComfort():
         '''
         project_id = self.project_id
         
-        if (_dir==None) and not (len(self.dwt_geometry_paths.keys()) > 0):
+        if (_dir==None) and not (len(self.directional_geometry_id.keys()) > 0):
             geometry_id = self.geometry_id
             
-        elif (_dir!=None) and (len(self.dwt_geometry_paths.keys()) > 0):
+        elif (_dir!=None) and (len(self.directional_geometry_id.keys()) > 0):
             geometry_id = self.directional_geometry_id[_dir]
         else:
-            print(_dir, len(self.dwt_geometry_paths.keys()))
+            print(_dir, len(self.directional_geometry_id.keys()))
             raise ('Direction not supplied, direction: {}, Number of dirs: {}'.format(
-                _dir, len(self.dwt_geometry_paths.keys())))
+                _dir, len(self.directional_geometry_id.keys())))
             
         maps = self.geometry_api.get_geometry_mappings(project_id, geometry_id, _class='body')
             
