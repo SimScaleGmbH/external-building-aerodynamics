@@ -719,6 +719,7 @@ class PedestrianComfort():
         elif (_dir!=None) and (len(self.dwt_geometry_paths.keys()) > 0):
             geometry_id = self.directional_geometry_id[_dir]
         else:
+            print(_dir, len(self.dwt_geometry_paths.keys()))
             raise ('Direction not supplied, direction: {}, Number of dirs: {}'.format(
                 _dir, len(self.dwt_geometry_paths.keys())))
             
