@@ -983,7 +983,7 @@ class PedestrianComfort():
             
             if len(self.directional_geometry_id.keys()) > 0:
                 self._update_geometry(self.directional_geometry_id[key])
-                self._set_map_as_mesh_roi(roi_map_name, key)
+                self._set_map_as_mesh_roi(roi_map_name, float(key))
             
             if len(self.directional_plot_ids.keys()) > 0:
                 pass
@@ -998,13 +998,13 @@ class PedestrianComfort():
             simulation_run = sim.SimulationRun(name=name)
             simulation_run = self.run_api.create_simulation_run(self.project_id, self.simulation_id, simulation_run)
             run_id = simulation_run.run_id
-
+            
             simulation_run = self.run_api.get_simulation_run(self.project_id, self.simulation_id, run_id)
-
+            
             self.run_api.start_simulation_run(self.project_id, self.simulation_id, run_id)
-
+            
             self.run_api.update_simulation_run(self.project_id, self.simulation_id, run_id, simulation_run)
-
+            
             self.run_ids[key] = run_id
 
     def get_wind_directions(self):
