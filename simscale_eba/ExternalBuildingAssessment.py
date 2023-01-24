@@ -982,7 +982,7 @@ class PedestrianComfort():
         for key in directions:
             
             if len(self.directional_geometry_id.keys()) > 0:
-                self._update_geometry(self.directional_geometry_id[key])
+                self._update_geometry(self.directional_geometry_id[float(key)])
                 self._set_map_as_mesh_roi(roi_map_name, float(key))
             
             if len(self.directional_plot_ids.keys()) > 0:
