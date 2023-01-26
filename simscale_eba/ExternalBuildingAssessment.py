@@ -956,6 +956,7 @@ class PedestrianComfort():
         '''
         for direction in self.directional_plot_paths.keys():
             for plot in self.directional_plot_paths[direction].keys():
+                print("uploading probe plot: {}, for direction{}".format(plot, direction))
                 path = self.directional_plot_paths[direction][plot]
                 probe_points_csv_storage = self.storage_api.create_storage()
                 with open(path, 'rb') as file:
@@ -1053,7 +1054,7 @@ class PedestrianComfort():
                 self._set_map_as_mesh_roi(roi_map_name, float(key))
             
             if len(self.directional_plot_ids.keys()) > 0:
-                self._set_probe_plots(key)
+                self._set_probe_plots(float(key))
             
             self._set_abl_table(key)
             self._set_wind_tunnel(str(key))
