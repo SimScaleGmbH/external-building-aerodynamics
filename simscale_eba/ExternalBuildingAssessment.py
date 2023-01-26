@@ -53,6 +53,7 @@ class PedestrianComfort():
         self.vertical_slice = None
         self.grid = {}
         self.plot_ids = []
+        self.directional_plot_paths = {}
         self.directional_plot_ids = {}
         self.run_number = run_number
         
@@ -587,7 +588,8 @@ class PedestrianComfort():
         
         self._set_simulation_length(number_of_fluid_passes=number_of_fluid_passes,
                                     direction=default_dir_fd)
-        self._set_probe_plots()
+        
+        self._set_probe_plots(default_dir_fd)
         
         self.set_mesh_fineness(fineness)
         
@@ -892,6 +894,13 @@ class PedestrianComfort():
         '''
         Uploads all defined probe points in the analysis type to SimScale
 
+        Parameters
+        ----------
+        fraction_from_end : float, optional
+            The Averaging fraction from the end of the simulation, i.e.
+            if running for 3 fluid passes, 0.33 is the last 33%, or if we said
+            300 secons, we average 100s. The default is 0.2.
+
         Returns
         -------
         None.
@@ -929,8 +938,66 @@ class PedestrianComfort():
             
         self.grid = grids
         
-    def _set_probe_plots(self):
-        self.simulation_model.result_control.probe_points = self.plot_ids
+    def upload_directional_plots(self, fraction_from_end=0.2):
+        '''
+        Create a dictionary of probe directional plots, after uploading csv's from path
+
+        Parameters
+        ----------
+        fraction_from_end : float, optional
+            The Averaging fraction from the end of the simulation, i.e.
+            if running for 3 fluid passes, 0.33 is the last 33%, or if we said
+            300 secons, we average 100s. The default is 0.2.
+
+        Returns
+        -------
+        None.
+
+        '''
+        for direction in self.directional_plot_paths.keys():
+            for plot in self.directional_plot_paths[direction].keys():
+                path = self.directional_plot_paths[direction][plot]
+                probe_points_csv_storage = self.storage_api.create_storage()
+                with open(path, 'rb') as file:
+                    self.api_client.rest_client.PUT(url=probe_points_csv_storage.url,
+                                                    headers={'Content-Type': 'application/octet-stream'},
+                                                    body=file.read())
+                storage_id = probe_points_csv_storage.storage_id
+                
+                probe_points_table_import = \
+                    sim.TableImportRequest(location=\
+                                           sim.TableImportRequestLocation(storage_id))
+                        
+                probe_points_table_import_response = \
+                    self.table_import_api.import_table(self.project_id,
+                                                       probe_points_table_import)
+                table_id = probe_points_table_import_response.table_id
+                
+                probe_plot = sim.ProbePointsResultControl(
+                    name=plot,
+                    write_control=sim.ModerateResolution(),
+                    fraction_from_end=fraction_from_end,
+                    probe_locations=sim.TableDefinedProbeLocations(table_id=table_id)
+                )
+                
+                if direction not in self.directional_plot_ids:
+                    self.directional_plot_ids[direction] = []
+                self.directional_plot_ids[direction].append(probe_plot)
+        
+    def _get_directional_probe_plots_from_dwt(self, dwt_tc):
+        for direction in dwt_tc.dwt_objects.keys():
+            for plot in dwt_tc.dwt_objects[direction].probe_paths.keys():
+                if direction not in self.directional_plot_paths:
+                    self.directional_plot_paths[direction] = {}
+                self.directional_plot_paths[direction][plot] = \
+                    dwt_tc.dwt_objects[direction].probe_paths[plot]
+        
+    def _set_probe_plots(self, direction):
+        if len(self.directional_plot_ids.keys()) > 0:
+            self.simulation_model.result_control.probe_points = self.plot_ids\
+                + self.directional_plot_ids[direction]
+        else:
+            self.simulation_model.result_control.probe_points = self.plot_ids
         
     def run_all_directions(self):
         '''
@@ -986,7 +1053,7 @@ class PedestrianComfort():
                 self._set_map_as_mesh_roi(roi_map_name, float(key))
             
             if len(self.directional_plot_ids.keys()) > 0:
-                pass
+                self._set_probe_plots(key)
             
             self._set_abl_table(key)
             self._set_wind_tunnel(str(key))

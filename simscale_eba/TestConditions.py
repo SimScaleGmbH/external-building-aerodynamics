@@ -33,6 +33,8 @@ class WindData():
         self.dwt_paths = {}
         self.dwt_objects = {}
         self.dwt_roi = {}
+        
+        self.directional_probes = {}
 
     def set_atmospheric_boundary_layer(self,
                                        direction,
@@ -252,6 +254,16 @@ class WindData():
         self.dwt_objects[direction] = dwt_object
         self.dwt_paths[direction] = dwt_object.path
         
+    
+    def create_measurement_poles(self,
+                                name=None,
+                                number_of_points=51,
+                                distance_from_centre=np.array([0, 0])):
+        
+        for direction in self.dwt_objects.keys():
+            self.dwt_objects[direction].create_measurement_pole(name=name,
+                                                                number_of_points=number_of_points,
+                                                                distance_from_centre=distance_from_centre)
 
 class WeatherPeriods():
 
