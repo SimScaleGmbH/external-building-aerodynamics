@@ -751,10 +751,24 @@ class PedestrianComfort():
     def _get_geometry_maps(self):
         for _map in self.geometry_mappings.keys():
             names = self.geometry_mappings[_map]['body_names']
-            for geometry in self.directional_geometry_id.keys():
+            if len(self.directional_geometry_id.keys()) > 0:
+                for geometry in self.directional_geometry_id.keys():
+                    maps = self.geometry_api.\
+                        get_geometry_mappings(self.project_id, 
+                                              self.directional_geometry_id[geometry], 
+                                              _class='body')
+                    
+                    entities = []
+                    for entity in maps.embedded:
+                        for attribute in entity.originate_from:
+                            if attribute.body in names:
+                                entities.append(entity.name)
+                    
+                    self.geometry_mappings[_map][geometry] = entities
+            else:
                 maps = self.geometry_api.\
                     get_geometry_mappings(self.project_id, 
-                                          self.directional_geometry_id[geometry], 
+                                          self.geometry_id, 
                                           _class='body')
                     
                 entities = []
@@ -763,7 +777,7 @@ class PedestrianComfort():
                         if attribute.body in names:
                             entities.append(entity.name)
                 
-                self.geometry_mappings[_map][geometry] = entities
+                self.geometry_mappings[_map][0] = entities
                 
     def _set_map_as_mesh_roi(self, map_name, direction):
         mesh_roi = self.geometry_mappings[map_name][direction]
@@ -1052,7 +1066,9 @@ class PedestrianComfort():
             if len(self.directional_geometry_id.keys()) > 0:
                 self._update_geometry(self.directional_geometry_id[float(key)])
                 self._set_map_as_mesh_roi(roi_map_name, float(key))
-            
+            else:
+                self._set_map_as_mesh_roi(roi_map_name, 0)
+                
             if len(self.directional_plot_ids.keys()) > 0:
                 self._set_probe_plots(float(key))
             
