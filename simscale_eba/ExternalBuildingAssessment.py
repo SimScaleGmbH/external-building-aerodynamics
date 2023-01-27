@@ -72,6 +72,7 @@ class PedestrianComfort():
         self.topological_reference = None
         
         self.mesh_fineness = "COARSE" 
+        self.mesh_primatives = {}
 
         # Check and create API environment
         if self.credentials == None:
@@ -435,6 +436,9 @@ class PedestrianComfort():
         
         self._create_vertical_slice(direction)
         
+    def _set_mesh_refinements(self, direction):
+        pass
+        
     def _get_simulation_length(self, number_of_fluid_passes=3, direction=None):
         if direction == None:
             direction = list(self.direction_flow_domain_ids.keys())[0]
@@ -706,6 +710,105 @@ class PedestrianComfort():
             direction] = self.simulation_api.create_geometry_primitive(
                 self.project_id,
                 external_flow_domain).geometry_primitive_id
+                
+    def _create_dwt_mesh_primatives(self, direction=0):
+        l1_refinement = sim.LocalCartesianBox(
+            name='Level 1 Refinement',
+            max=sim.DimensionalVectorLength(value=sim.DecimalVector(
+                x=self.directional_region_of_interest[direction]._centre[0],
+                y=self.directional_region_of_interest[direction]._wt_maximum_point[1]/(680/300),
+                z=self.directional_region_of_interest[direction]._wt_maximum_point[2])/(740/80),
+                unit='m'),
+
+            min=sim.DimensionalVectorLength(value=sim.DecimalVector(
+                x=self.directional_region_of_interest[direction]._wt_minimum_point[0]/(13500/3500),
+                y=self.directional_region_of_interest[direction]._wt_minimum_point[1]/(680/300),
+                z=self.directional_region_of_interest[direction]._wt_minimum_point[2]),
+                unit='m'),
+            orientation_reference='FLOW_DOMAIN'
+            
+        )
+        
+        l2_refinement = sim.LocalCartesianBox(
+            name='Level 2 Refinement',
+            max=sim.DimensionalVectorLength(value=sim.DecimalVector(
+                x=self.directional_region_of_interest[direction]._centre[0],
+                y=self.directional_region_of_interest[direction]._wt_maximum_point[1],
+                z=self.directional_region_of_interest[direction]._wt_maximum_point[2]/(740/160)),
+                unit='m'),
+
+            min=sim.DimensionalVectorLength(value=sim.DecimalVector(
+                x=self.directional_region_of_interest[direction]._wt_minimum_point[0]/(13500/12000),
+                y=self.directional_region_of_interest[direction]._wt_minimum_point[1],
+                z=self.directional_region_of_interest[direction]._wt_minimum_point[2]),
+                unit='m'),
+            orientation_reference='FLOW_DOMAIN'
+        )
+        
+        l3_refinement = sim.LocalCartesianBox(
+            name='Level 3 Refinement',
+            max=sim.DimensionalVectorLength(value=sim.DecimalVector(
+                x=self.directional_region_of_interest[direction]._centre[0],
+                y=self.directional_region_of_interest[direction]._wt_maximum_point[1],
+                z=self.directional_region_of_interest[direction]._wt_maximum_point[2]/(740/240)),
+                unit='m'),
+
+            min=sim.DimensionalVectorLength(value=sim.DecimalVector(
+                x=self.directional_region_of_interest[direction]._wt_minimum_point[0]/(13500/12760),
+                y=self.directional_region_of_interest[direction]._wt_minimum_point[1],
+                z=self.directional_region_of_interest[direction]._wt_minimum_point[2]),
+                unit='m'),
+            orientation_reference='FLOW_DOMAIN'
+        )
+        
+        mesh_primatives = {}
+        mesh_primatives['Level 1'] = self.simulation_api.create_geometry_primitive(
+            self.project_id,
+            l1_refinement).geometry_primitive_id
+        
+        mesh_primatives['Level 2'] = self.simulation_api.create_geometry_primitive(
+            self.project_id,
+            l2_refinement).geometry_primitive_id
+        
+        mesh_primatives['Level 3'] = self.simulation_api.create_geometry_primitive(
+            self.project_id,
+            l3_refinement).geometry_primitive_id
+        
+        return mesh_primatives
+        
+    def _set_dwt_mesh_refinements(self):
+        
+        mesh_primatives = self._create_dwt_mesh_primatives(self)
+        
+        self.simulation_model.mesh_settings_new.refinements.\
+            append(sim.NewRegionRefinementPacefishV38(
+                name='Level 1',
+                mesh_sizing=sim.ManualRegionSizingPacefish(
+                    value=4,
+                    unit='m'), 
+                geometry_primitive_uuids=mesh_primatives['Level 1']
+                )
+            )
+            
+        self.simulation_model.mesh_settings_new.refinements.\
+            append(sim.NewRegionRefinementPacefishV38(
+                name='Level 2',
+                mesh_sizing=sim.ManualRegionSizingPacefish(
+                    value=8,
+                    unit='m'), 
+                geometry_primitive_uuids=mesh_primatives['Level 2']
+                )
+            )
+            
+        self.simulation_model.mesh_settings_new.refinements.\
+            append(sim.NewRegionRefinementPacefishV38(
+                name='Level 3',
+                mesh_sizing=sim.ManualRegionSizingPacefish(
+                    value=12,
+                    unit='m'), 
+                geometry_primitive_uuids=mesh_primatives['Level 3']
+                )
+            )
     
     def _get_geometry_map(self, _dir=None, names=['BUILDING_OF_INTEREST', 'CONTEXT']):
         '''
@@ -1069,8 +1172,7 @@ class PedestrianComfort():
             else:
                 self._set_map_as_mesh_roi(roi_map_name, 0)
                 
-            if len(self.directional_plot_ids.keys()) > 0:
-                self._set_probe_plots(float(key))
+            self._set_probe_plots(float(key))
             
             self._set_abl_table(key)
             self._set_wind_tunnel(str(key))
@@ -1324,6 +1426,7 @@ class model_obj:
             mesh_settings_new=sim.PacefishAutomesh(
                 new_fineness=sim.PacefishFinenessCoarse(),
                 reference_length_computation=sim.AutomaticReferenceLength(),
+                refinements = [],
                 primary_topology=sim.BuildingsOfInterest(
                     type='BUILDINGS_OF_INTEREST',
                     topological_reference = sim.TopologicalReference(
