@@ -780,7 +780,7 @@ class PedestrianComfort():
         
     def _set_dwt_mesh_refinements(self):
         
-        mesh_primatives = self._create_dwt_mesh_primatives(self)
+        mesh_primatives = self._create_dwt_mesh_primatives()
         
         self.simulation_model.mesh_settings_new.refinements.\
             append(sim.NewRegionRefinementPacefishV38(
