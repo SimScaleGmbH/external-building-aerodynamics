@@ -712,7 +712,7 @@ class PedestrianComfort():
                 external_flow_domain).geometry_primitive_id
                 
     def _create_dwt_mesh_primatives(self):
-        direction = self.directional_region_of_interest.keys()[0]
+        direction = list(self.directional_region_of_interest.keys())[0]
         
         l1_refinement = sim.LocalCartesianBox(
             name='Level 1 Refinement',
