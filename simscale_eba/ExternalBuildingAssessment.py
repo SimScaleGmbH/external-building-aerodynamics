@@ -781,6 +781,7 @@ class PedestrianComfort():
             self.project_id,
             l3_refinement).geometry_primitive_id
         
+        self.mesh_primatives = mesh_primatives
         return mesh_primatives
         
     def _set_dwt_mesh_refinements(self):
@@ -795,7 +796,7 @@ class PedestrianComfort():
                         value=4,
                         unit='m')
                     ),
-                geometry_primitive_uuids=mesh_primatives['Level 1']
+                geometry_primitive_uuids=[mesh_primatives['Level 1']]
                 )
             )
                 
@@ -807,7 +808,7 @@ class PedestrianComfort():
                         value=8,
                         unit='m')
                     ),
-                geometry_primitive_uuids=mesh_primatives['Level 2']
+                geometry_primitive_uuids=[mesh_primatives['Level 2']]
                 )
             )
             
@@ -819,7 +820,7 @@ class PedestrianComfort():
                         value=12,
                         unit='m')
                     ),
-                geometry_primitive_uuids=mesh_primatives['Level 3']
+                geometry_primitive_uuids=[mesh_primatives['Level 3']]
                 )
             )
             #self.simulation_model.mesh_settings_new.refinements.
