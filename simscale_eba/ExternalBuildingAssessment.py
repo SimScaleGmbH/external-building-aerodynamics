@@ -813,13 +813,13 @@ class PedestrianComfort():
             
         self.mesh_refinements.\
             append(sim.NewRegionRefinementPacefishV38(
-                name='Level 2',
+                name='Level 3',
                 mesh_sizing=sim.ManualRegionSizingPacefish(
                     target_resolution=sim.DimensionalLength(
                         value=12,
                         unit='m')
                     ),
-                geometry_primitive_uuids=mesh_primatives['Level 2']
+                geometry_primitive_uuids=mesh_primatives['Level 3']
                 )
             )
             #self.simulation_model.mesh_settings_new.refinements.
