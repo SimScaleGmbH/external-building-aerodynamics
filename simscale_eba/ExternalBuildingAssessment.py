@@ -719,7 +719,7 @@ class PedestrianComfort():
             max=sim.DimensionalVectorLength(value=sim.DecimalVector(
                 x=self.directional_region_of_interest[direction]._centre[0],
                 y=self.directional_region_of_interest[direction]._wt_maximum_point[1]/(680/300),
-                z=self.directional_region_of_interest[direction]._wt_maximum_point[2])/(740/80),
+                z=self.directional_region_of_interest[direction]._wt_maximum_point[2]/(740/80)),
                 unit='m'),
 
             min=sim.DimensionalVectorLength(value=sim.DecimalVector(
