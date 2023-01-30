@@ -73,6 +73,7 @@ class PedestrianComfort():
         
         self.mesh_fineness = "COARSE" 
         self.mesh_primatives = {}
+        self.mesh_refinements = []
 
         # Check and create API environment
         if self.credentials == None:
@@ -614,6 +615,10 @@ class PedestrianComfort():
                                                       model=self.simulation_model)  
             if self.building_geom == None:
                 self._get_geometry_map()
+                
+        if len(self.mesh_refinements) > 0:
+            self.simulation_model.mesh_settings_new.refinements\
+                = self.mesh_refinements
             
     
     def set_manual_reynolds_scaling(self, reynolds_scale=1):
@@ -782,7 +787,7 @@ class PedestrianComfort():
         
         mesh_primatives = self._create_dwt_mesh_primatives()
         
-        self.simulation_model.mesh_settings_new.refinements.\
+        self.mesh_refinements.\
             append(sim.NewRegionRefinementPacefishV38(
                 name='Level 1',
                 mesh_sizing=sim.ManualRegionSizingPacefish(
@@ -794,7 +799,7 @@ class PedestrianComfort():
                 )
             )
                 
-        self.simulation_model.mesh_settings_new.refinements.\
+        self.mesh_refinements.\
             append(sim.NewRegionRefinementPacefishV38(
                 name='Level 2',
                 mesh_sizing=sim.ManualRegionSizingPacefish(
@@ -806,7 +811,7 @@ class PedestrianComfort():
                 )
             )
             
-        self.simulation_model.mesh_settings_new.refinements.\
+        self.mesh_refinements.\
             append(sim.NewRegionRefinementPacefishV38(
                 name='Level 2',
                 mesh_sizing=sim.ManualRegionSizingPacefish(
@@ -817,7 +822,7 @@ class PedestrianComfort():
                 geometry_primitive_uuids=mesh_primatives['Level 2']
                 )
             )
-    
+            #self.simulation_model.mesh_settings_new.refinements.
     def _get_geometry_map(self, _dir=None, names=['BUILDING_OF_INTEREST', 'CONTEXT']):
         '''
         get the map of geometry from a CAD.
