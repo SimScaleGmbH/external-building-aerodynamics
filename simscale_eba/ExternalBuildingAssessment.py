@@ -49,7 +49,8 @@ class PedestrianComfort():
         self.geometry_import_api = None
         self.storage_api = None
         self.table_import_api = None
-
+        
+        #Simulation objects
         self.vertical_slice = None
         self.grid = {}
         self.plot_ids = []
@@ -57,12 +58,6 @@ class PedestrianComfort():
         self.directional_plot_ids = {}
         self.run_number = run_number
         
-        # SimScale Authentication
-        self.credentials = credentials
-        self.api_client = None
-        self.api_key_header = None
-        self.api_key = None
-
         self.test_conditions = None
         self.region_of_interest = None
         self.directional_region_of_interest = {}
@@ -75,6 +70,12 @@ class PedestrianComfort():
         self.mesh_primatives = {}
         self.mesh_refinements = []
         self.directional_mesh_refinements = {}
+        
+        # SimScale Authentication
+        self.credentials = credentials
+        self.api_client = None
+        self.api_key_header = None
+        self.api_key = None
 
         # Check and create API environment
         if self.credentials == None:
@@ -790,8 +791,8 @@ class PedestrianComfort():
         return mesh_primatives
         
     def _set_dwt_mesh_refinements(self):
-        for direction in self.dwt_objects.keys():
-            scale = self.dwt_objects[direction].scale
+        for direction in self.test_conditions.dwt_objects.keys():
+            scale = self.test_conditions.dwt_objects[direction].scale
             
             mesh_primatives = self._create_dwt_mesh_primatives(direction, scale)
             
