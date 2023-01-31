@@ -627,6 +627,9 @@ class PedestrianComfort():
         elif not (len(self.mesh_refinements) > 0) and default_dir_fd in self.directional_mesh_refinements:
             self.simulation_model.mesh_settings_new.refinements\
                 = self.directional_mesh_refinements[default_dir_fd]
+        else:
+            print('No refinements to add from either {} or {}'.\
+                  format(self.mesh_refinements, self.directional_mesh_refinements[default_dir_fd]))
     def set_manual_reynolds_scaling(self, reynolds_scale=1):
         
         self.simulation_model.\
