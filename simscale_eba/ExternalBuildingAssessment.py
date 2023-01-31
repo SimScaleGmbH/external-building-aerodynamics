@@ -628,16 +628,14 @@ class PedestrianComfort():
             self.simulation_model.mesh_settings_new.refinements\
                 = self.directional_mesh_refinements[float(default_dir_fd)]
         else:
-            print('No refinements to add from either {} or {}'.\
-                  format(self.mesh_refinements, self.directional_mesh_refinements[default_dir_fd]))
+            print('No refinements to add from either mesh_refinements or directional_mesh_refinements')
     def set_manual_reynolds_scaling(self, reynolds_scale=1):
         
         self.simulation_model.\
              mesh_settings_new.\
-             reynolds_scaling_type = sim.ManualReynoldsScaling(type='MANUAL_REYNOLDS_SCALING', 
-                                                               reynolds_scaling_factor=reynolds_scale)
-        
-        
+             reynolds_scaling_type = sim.ManualReynoldsScaling(
+                 type='MANUAL_REYNOLDS_SCALING', 
+                 reynolds_scaling_factor=reynolds_scale)
     
     def create_default_simulation(self, fineness = 'COARSE', number_of_fluid_passes=3):
         self._create_default_spec(fineness=fineness,
