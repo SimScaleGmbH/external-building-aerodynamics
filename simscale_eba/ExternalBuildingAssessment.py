@@ -794,7 +794,7 @@ class PedestrianComfort():
         for direction in self.test_conditions.dwt_objects.keys():
             scale = self.test_conditions.dwt_objects[direction].scale
             
-            mesh_primatives = self._create_dwt_mesh_primatives(direction, scale)
+            mesh_primatives = self._create_dwt_mesh_primatives(str(direction), scale)
             
             if direction not in self.directional_mesh_refinements:
                 self.directional_mesh_refinements[direction] = []
