@@ -74,6 +74,7 @@ class PedestrianComfort():
         self.mesh_fineness = "COARSE" 
         self.mesh_primatives = {}
         self.mesh_refinements = []
+        self.directional_mesh_refinements = {}
 
         # Check and create API environment
         if self.credentials == None:
@@ -616,11 +617,15 @@ class PedestrianComfort():
             if self.building_geom == None:
                 self._get_geometry_map()
                 
-        if len(self.mesh_refinements) > 0:
+        if (len(self.mesh_refinements) > 0) and default_dir_fd in self.directional_mesh_refinements:
+            self.simulation_model.mesh_settings_new.refinements\
+                = self.mesh_refinements + self.directional_mesh_refinements[default_dir_fd]
+        elif (len(self.mesh_refinements) > 0) and not default_dir_fd in self.directional_mesh_refinements:
             self.simulation_model.mesh_settings_new.refinements\
                 = self.mesh_refinements
-            
-    
+        elif not (len(self.mesh_refinements) > 0) and default_dir_fd in self.directional_mesh_refinements:
+            self.simulation_model.mesh_settings_new.refinements\
+                = self.directional_mesh_refinements[default_dir_fd]
     def set_manual_reynolds_scaling(self, reynolds_scale=1):
         
         self.simulation_model.\
@@ -716,8 +721,8 @@ class PedestrianComfort():
                 self.project_id,
                 external_flow_domain).geometry_primitive_id
                 
-    def _create_dwt_mesh_primatives(self):
-        direction = list(self.directional_region_of_interest.keys())[0]
+    def _create_dwt_mesh_primatives(self, direction, scale):
+        
         
         l1_refinement = sim.LocalCartesianBox(
             name='Level 1 Refinement',
@@ -785,44 +790,49 @@ class PedestrianComfort():
         return mesh_primatives
         
     def _set_dwt_mesh_refinements(self):
-        
-        mesh_primatives = self._create_dwt_mesh_primatives()
-        
-        self.mesh_refinements.\
-            append(sim.NewRegionRefinementPacefishV38(
-                name='Level 1',
-                mesh_sizing=sim.ManualRegionSizingPacefish(
-                    target_resolution=sim.DimensionalLength(
-                        value=4,
-                        unit='m')
-                    ),
-                geometry_primitive_uuids=[mesh_primatives['Level 1']]
-                )
-            )
-                
-        self.mesh_refinements.\
-            append(sim.NewRegionRefinementPacefishV38(
-                name='Level 2',
-                mesh_sizing=sim.ManualRegionSizingPacefish(
-                    target_resolution=sim.DimensionalLength(
-                        value=8,
-                        unit='m')
-                    ),
-                geometry_primitive_uuids=[mesh_primatives['Level 2']]
-                )
-            )
+        for direction in self.dwt_objects.keys():
+            scale = self.dwt_objects[direction].scale
             
-        self.mesh_refinements.\
-            append(sim.NewRegionRefinementPacefishV38(
-                name='Level 3',
-                mesh_sizing=sim.ManualRegionSizingPacefish(
-                    target_resolution=sim.DimensionalLength(
-                        value=12,
-                        unit='m')
-                    ),
-                geometry_primitive_uuids=[mesh_primatives['Level 3']]
+            mesh_primatives = self._create_dwt_mesh_primatives(direction, scale)
+            
+            if direction not in self.directional_mesh_refinements:
+                self.directional_mesh_refinements[direction] = []
+            
+            self.directional_mesh_refinements[direction].\
+                append(sim.NewRegionRefinementPacefishV38(
+                    name='Level 1',
+                    mesh_sizing=sim.ManualRegionSizingPacefish(
+                        target_resolution=sim.DimensionalLength(
+                            value=4*scale,
+                            unit='m')
+                        ),
+                    geometry_primitive_uuids=[mesh_primatives['Level 1']]
+                    )
                 )
-            )
+                    
+            self.directional_mesh_refinements[direction].\
+                append(sim.NewRegionRefinementPacefishV38(
+                    name='Level 2',
+                    mesh_sizing=sim.ManualRegionSizingPacefish(
+                        target_resolution=sim.DimensionalLength(
+                            value=8*scale,
+                            unit='m')
+                        ),
+                    geometry_primitive_uuids=[mesh_primatives['Level 2']]
+                    )
+                )
+                
+            self.directional_mesh_refinements[direction].\
+                append(sim.NewRegionRefinementPacefishV38(
+                    name='Level 3',
+                    mesh_sizing=sim.ManualRegionSizingPacefish(
+                        target_resolution=sim.DimensionalLength(
+                            value=12*scale,
+                            unit='m')
+                        ),
+                    geometry_primitive_uuids=[mesh_primatives['Level 3']]
+                    )
+                )
             #self.simulation_model.mesh_settings_new.refinements.
     def _get_geometry_map(self, _dir=None, names=['BUILDING_OF_INTEREST', 'CONTEXT']):
         '''
