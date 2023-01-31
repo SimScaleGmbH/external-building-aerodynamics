@@ -618,15 +618,15 @@ class PedestrianComfort():
             if self.building_geom == None:
                 self._get_geometry_map()
                 
-        if (len(self.mesh_refinements) > 0) and str(default_dir_fd) in self.directional_mesh_refinements:
+        if (len(self.mesh_refinements) > 0) and float(default_dir_fd) in self.directional_mesh_refinements:
             self.simulation_model.mesh_settings_new.refinements\
-                = self.mesh_refinements + self.directional_mesh_refinements[str(default_dir_fd)]
-        elif (len(self.mesh_refinements) > 0) and not str(default_dir_fd) in self.directional_mesh_refinements:
+                = self.mesh_refinements + self.directional_mesh_refinements[float(default_dir_fd)]
+        elif (len(self.mesh_refinements) > 0) and not float(default_dir_fd) in self.directional_mesh_refinements:
             self.simulation_model.mesh_settings_new.refinements\
                 = self.mesh_refinements
-        elif not (len(self.mesh_refinements) > 0) and str(default_dir_fd) in self.directional_mesh_refinements:
+        elif not (len(self.mesh_refinements) > 0) and float(default_dir_fd) in self.directional_mesh_refinements:
             self.simulation_model.mesh_settings_new.refinements\
-                = self.directional_mesh_refinements[str(default_dir_fd)]
+                = self.directional_mesh_refinements[float(default_dir_fd)]
         else:
             print('No refinements to add from either {} or {}'.\
                   format(self.mesh_refinements, self.directional_mesh_refinements[default_dir_fd]))
