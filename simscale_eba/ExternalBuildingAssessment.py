@@ -1,5 +1,6 @@
 import pathlib
 import time
+import uuid
 
 import simscale_sdk as sim
 import pandas as pd
@@ -24,13 +25,17 @@ class PedestrianComfort():
         self.simulation_model = None
 
         self.building_geom = None
+        self.geometry_mappings = {}
         self.geometry_path = None
+        self.dwt_geometry_paths = {} #If geometry with same names are already 
+                                     #uploaded, these paths will not be populated
         self.geometry_name = None
 
         self.project_id = None
         self.simulation_id = None
         self.run_ids = {}
         self.geometry_id = None
+        self.directional_geometry_id = {}
         self.storage_id = None
         self.flow_domain_id = None
         self.direction_flow_domain_ids = {}
@@ -44,26 +49,33 @@ class PedestrianComfort():
         self.geometry_import_api = None
         self.storage_api = None
         self.table_import_api = None
-
+        
+        #Simulation objects
         self.vertical_slice = None
         self.grid = {}
         self.plot_ids = []
+        self.directional_plot_paths = {}
+        self.directional_plot_ids = {}
         self.run_number = run_number
         
-        # SimScale Authentication
-        self.credentials = credentials
-        self.api_client = None
-        self.api_key_header = None
-        self.api_key = None
-
         self.test_conditions = None
         self.region_of_interest = None
+        self.directional_region_of_interest = {}
         self.number_of_fluid_passes = 3
         self.advanced_modelling = None
         self.surface_roughness = 0
         self.topological_reference = None
         
         self.mesh_fineness = "COARSE" 
+        self.mesh_primatives = {}
+        self.mesh_refinements = []
+        self.directional_mesh_refinements = {}
+        
+        # SimScale Authentication
+        self.credentials = credentials
+        self.api_client = None
+        self.api_key_header = None
+        self.api_key = None
 
         # Check and create API environment
         if self.credentials == None:
@@ -115,6 +127,56 @@ class PedestrianComfort():
 
         '''
         self.geometry_path = geometry_path
+        
+    def set_dwt_geometry(self, _dir, dwt, geometry_path=None):
+        
+        def file_compress(inp_file_names, out_zip_file):
+            """
+            function : file_compress
+            args : inp_file_names : list of filenames to be zipped
+            out_zip_file : output zip file
+            return : none
+            assumption : Input file paths and this code is in same directory.
+            """
+            
+            '''
+            https://www.tutorialspoint.com/how-to-compress-files-with-zipfile-module-in-python
+            '''
+            import zipfile
+            # Select the compression mode ZIP_DEFLATED for compression
+            # or zipfile.ZIP_STORED to just store the file
+            compression = zipfile.ZIP_DEFLATED
+            print(f" *** Input File name passed for zipping - {inp_file_names}")
+            
+            # create the zip file first parameter path/name, second mode
+            print(f' *** out_zip_file is - {out_zip_file}')
+            zf = zipfile.ZipFile(out_zip_file, mode="w")
+            
+            try:
+                for file_to_write in inp_file_names:
+                    # Add file to the zip file
+                    # first parameter file to zip, second filename in zip
+                    print(f' *** Processing file {file_to_write}')
+                    zf.write(file_to_write, arcname=file_to_write.name, compress_type=compression)
+            
+            except FileNotFoundError as e:
+                print(f' *** Exception occurred during zip process - {e}')
+            finally:
+                # Don't forget to close the file!
+                zf.close()
+        
+        if geometry_path != None:
+            import zipfile
+            with zipfile.ZipFile(geometry_path, 'r') as zip_ref:
+                zip_ref.extractall(dwt.path)
+                
+        path_list = dwt.path.glob('*.stl')
+        
+        export_path = dwt.path / 'export.zip'
+        file_compress(path_list, export_path) 
+        
+        self.dwt_geometry_paths[_dir] = export_path
+        
 
     def upload_geometry(self, name, path=None, units="m", _format="STL", facet_split=False):
         '''
@@ -192,6 +254,89 @@ class PedestrianComfort():
                 geometry_import = self.geometry_import_api.get_geometry_import(self.project_id, geometry_import_id)
                 print(f'Geometry import status: {geometry_import.status}')
             self.geometry_id = geometry_import.geometry_id
+            
+    def _upload_dwt_geometry(self, 
+                             name, 
+                             dwt_tc=None, 
+                             path=None, 
+                             units="m", _format="STL", facet_split=False):
+        '''
+        Upload a geometry to the SimScale platform to a preassigned project.
+        
+        This is a modified version of the upload coad from the API examples.
+
+        Parameters
+        ----------
+        name : str
+            The name given to the geometry.
+        path : pathlib.Path, optional
+            The path to a geometry to upload. 
+            
+            The default is predefined.
+            
+        units : str, optional
+            the unit in which to upload the geometry to SimScale.
+            
+            The default is "m".
+            
+        _format : str, optional
+            The file format. 
+            
+            The default is "STL".
+            
+        facet_split : bool, optional
+            Decide on weather to split facet geometry (such as .stl file 
+            types). We prefer not to do this for API use.
+            
+            The default is False.
+
+        Raises
+        ------
+        TimeoutError
+            DESCRIPTION.
+
+        Returns
+        -------
+        None.
+
+        '''
+        for _dir in dwt_tc.dwt_objects:
+            #dwt_path = dwt_tc.dwt_objects[_dir].path
+            name_dir = name + ', Direction ' + str(_dir)
+            try:
+                sc.find_geometry(self, name_dir)
+                print("Cannot upload geometry with the same name, using existing geometry")
+                self.directional_geometry_id[_dir] = self.geometry_id
+            except:
+                self.set_dwt_geometry(_dir, dwt_tc.dwt_objects[_dir], path)
+    
+                storage = self.storage_api.create_storage()
+                with open(self.dwt_geometry_paths[_dir], 'rb') as file:
+                    self.api_client.rest_client.PUT(url=storage.url, headers={'Content-Type': 'application/octet-stream'},
+                                                    body=file.read())
+                self.storage_id = storage.storage_id
+    
+                geometry_import = sim.GeometryImportRequest(
+                    name=name_dir,
+                    location=sim.GeometryImportRequestLocation(self.storage_id),
+                    format=_format,
+                    input_unit=units,
+                    options=sim.GeometryImportRequestOptions(facet_split=facet_split, sewing=False, improve=True,
+                                                             optimize_for_lbm_solver=True),
+                )
+    
+                geometry_import = self.geometry_import_api.import_geometry(self.project_id, geometry_import)
+                geometry_import_id = geometry_import.geometry_import_id
+    
+                geometry_import_start = time.time()
+                while geometry_import.status not in ('FINISHED', 'CANCELED', 'FAILED'):
+                    # adjust timeout for larger geometries
+                    if time.time() > geometry_import_start + 900:
+                        raise TimeoutError()
+                    time.sleep(10)
+                    geometry_import = self.geometry_import_api.get_geometry_import(self.project_id, geometry_import_id)
+                    print(f'Geometry import status: {geometry_import.status}')
+                self.directional_geometry_id[_dir] = geometry_import.geometry_id
 
     def set_region_of_interest(self, roi):
         self.region_of_interest = roi
@@ -199,6 +344,15 @@ class PedestrianComfort():
         if self.test_conditions != None:
             for direction in self.test_conditions.directions:
                 self._create_wind_tunnel(direction=direction)
+                
+    def _set_directional_region_of_interest_from_dwt_tc(self, dwt_tc):
+        '''
+        Internal use only
+        '''
+        self.directional_region_of_interest = dwt_tc.dwt_roi
+        
+        for direction in self.directional_region_of_interest:
+            self._create_wind_tunnel_from_directional_roi(direction=direction)
         
     def set_wind_conditions(self, WindData):
         '''
@@ -268,19 +422,36 @@ class PedestrianComfort():
     def _set_wind_tunnel(self, direction):
         self.simulation_model.bounding_box_uuid = self.direction_flow_domain_ids[direction]
         
-        self.simulation_model.\
-        mesh_settings_new.\
-        reference_length_computation = sim.ManualReferenceLength(
-            value=sim.DimensionalTime(
-                value=self.region_of_interest._radius*2, unit="m")
-            )
+        if len(self.directional_region_of_interest.keys()) > 0:
+            self.simulation_model.\
+            mesh_settings_new.\
+            reference_length_computation = sim.ManualReferenceLength(
+                value=sim.DimensionalTime(
+                    value=self.directional_region_of_interest[direction]._radius*2, unit="m")
+                )
+        else:
+            self.simulation_model.\
+            mesh_settings_new.\
+            reference_length_computation = sim.ManualReferenceLength(
+                value=sim.DimensionalTime(
+                    value=self.region_of_interest._radius*2, unit="m")
+                )
         
-        self._create_vertical_slice()
+        self._create_vertical_slice(direction)
+        
+    def _set_mesh_refinements(self, direction):
+        pass
         
     def _get_simulation_length(self, number_of_fluid_passes=3, direction=None):
         if direction == None:
             direction = list(self.direction_flow_domain_ids.keys())[0]
-        wt_length = self.region_of_interest._wt_length
+            
+        if len(self.directional_region_of_interest.keys()) > 0:
+            roi = self.directional_region_of_interest[direction]
+        else:
+            roi = self.region_of_interest
+            
+        wt_length = roi._wt_length
         
         reference_speed = self.test_conditions.reference_speeds[str(direction)].m
         
@@ -288,13 +459,14 @@ class PedestrianComfort():
         
         return time
     
-    def _set_simulation_length(self, number_of_fluid_passes):
+    def _set_simulation_length(self, number_of_fluid_passes, direction):
         
         self.simulation_model.\
             simulation_control.\
             end_time.\
             value = self._get_simulation_length(number_of_fluid_passes=\
-                                                    number_of_fluid_passes)
+                                                    number_of_fluid_passes,
+                                                    direction=direction)
         
     def _init_default_wind_abl(self):
         '''
@@ -363,7 +535,7 @@ class PedestrianComfort():
              value.value.\
              result_index = [4]
         
-    def _create_vertical_slice(self):
+    def _create_vertical_slice(self, direction=None):
         '''
         Creates a vertical slice for assessing the ABL accross the domain
 
@@ -372,9 +544,14 @@ class PedestrianComfort():
         None.
 
         '''
-        X = self.region_of_interest._centre[0]
-        Y = self.region_of_interest._centre[1]
-        Z = self.region_of_interest._ground_height
+        if len(self.directional_region_of_interest.keys()) > 0:
+            roi = self.directional_region_of_interest[direction]
+        else:
+            roi = self.region_of_interest
+            
+        X = roi._centre[0]
+        Y = roi._centre[1]
+        Z = roi._ground_height
 
         reference_point = sim.DimensionalVectorLength(value=sim.DecimalVector(x=X, y=Y, z=Z), unit='m')
         normal = sim.DimensionalVectorLength(value=sim.DecimalVector(x=0, y=1, z=0), unit='m')
@@ -403,32 +580,64 @@ class PedestrianComfort():
              
         self.vertical_slice = _slice.geometry_primitive_id
     
-    def _create_default_spec(self, fineness = 'COARSE', number_of_fluid_passes=3):
+    def _create_default_spec(self, 
+                             fineness='COARSE', 
+                             number_of_fluid_passes=3
+                             ):
+        
+        default_dir_fd = list(self.direction_flow_domain_ids.keys())[0]
+        
         self._init_model()
         self._init_default_wind_tunnel()
         self._init_default_wind_abl()
-
-        self._get_geometry_map()
-        self._set_buildings_as_mesh_entities()
-        self._set_simulation_length(number_of_fluid_passes=number_of_fluid_passes)
-        self._set_probe_plots()
+        
+            
+        
+        self._set_simulation_length(number_of_fluid_passes=number_of_fluid_passes,
+                                    direction=default_dir_fd)
+        
+        self._set_probe_plots(default_dir_fd)
         
         self.set_mesh_fineness(fineness)
-        self.simulation_spec = sim.SimulationSpec(name=self.name, 
-                                                  geometry_id=self.geometry_id, 
-                                                  model=self.simulation_model)        
-    
+        
+        if len(self.directional_geometry_id.keys()) > 0:
+            default_dir_geom = list(self.directional_geometry_id.keys())[0]
+            
+            self.simulation_spec = sim.SimulationSpec(name=self.name, 
+                                                      geometry_id=self.directional_geometry_id[default_dir_geom], 
+                                                      model=self.simulation_model)  
+            
+            if self.building_geom == None:
+                self._get_geometry_map(default_dir_geom)
+            
+        else:
+            print('single_dir')
+            self.simulation_spec = sim.SimulationSpec(name=self.name, 
+                                                      geometry_id=self.geometry_id, 
+                                                      model=self.simulation_model)  
+            if self.building_geom == None:
+                self._get_geometry_map()
+                
+        if (len(self.mesh_refinements) > 0) and float(default_dir_fd) in self.directional_mesh_refinements:
+            self.simulation_model.mesh_settings_new.refinements\
+                = self.mesh_refinements + self.directional_mesh_refinements[float(default_dir_fd)]
+        elif (len(self.mesh_refinements) > 0) and not float(default_dir_fd) in self.directional_mesh_refinements:
+            self.simulation_model.mesh_settings_new.refinements\
+                = self.mesh_refinements
+        elif not (len(self.mesh_refinements) > 0) and float(default_dir_fd) in self.directional_mesh_refinements:
+            self.simulation_model.mesh_settings_new.refinements\
+                = self.directional_mesh_refinements[float(default_dir_fd)]
+        else:
+            print('No refinements to add from either mesh_refinements or directional_mesh_refinements')
     def set_manual_reynolds_scaling(self, reynolds_scale=1):
         
         self.simulation_model.\
              mesh_settings_new.\
-             reynolds_scaling_type = sim.ManualReynoldsScaling(type='MANUAL_REYNOLDS_SCALING', 
-                                                               reynolds_scaling_factor=reynolds_scale)
-        
-        
+             reynolds_scaling_type = sim.ManualReynoldsScaling(
+                 type='MANUAL_REYNOLDS_SCALING', 
+                 reynolds_scaling_factor=reynolds_scale)
     
     def create_default_simulation(self, fineness = 'COARSE', number_of_fluid_passes=3):
-        
         self._create_default_spec(fineness=fineness,
                                   number_of_fluid_passes=number_of_fluid_passes)
         
@@ -479,13 +688,157 @@ class PedestrianComfort():
             direction] = self.simulation_api.create_geometry_primitive(
                 self.project_id,
                 external_flow_domain).geometry_primitive_id
-    
-    def _get_geometry_map(self, names=['BUILDING_OF_INTEREST', 'CONTEXT']):
+                
+    def _create_wind_tunnel_from_directional_roi(self, direction=0):
+        
+        external_flow_domain = sim.RotatableCartesianBox(
+            name='External Flow Domain',
+            max=sim.DimensionalVectorLength(value=sim.DecimalVector(
+                x=self.directional_region_of_interest[direction]._wt_maximum_point[0],
+                y=self.directional_region_of_interest[direction]._wt_maximum_point[1],
+                z=self.directional_region_of_interest[direction]._wt_maximum_point[2]),
+                unit='m'),
+
+            min=sim.DimensionalVectorLength(value=sim.DecimalVector(
+                x=self.directional_region_of_interest[direction]._wt_minimum_point[0],
+                y=self.directional_region_of_interest[direction]._wt_minimum_point[1],
+                z=self.directional_region_of_interest[direction]._wt_minimum_point[2]),
+                unit='m'),
+
+            rotation_point=sim.DimensionalVectorLength(
+                value=sim.DecimalVector(x=self.directional_region_of_interest[direction]._centre[0],
+                                        y=self.directional_region_of_interest[direction]._centre[1],
+                                        z=self.directional_region_of_interest[direction]._ground_height),
+                unit='m'
+            ),
+
+            rotation_angles=sim.DimensionalVectorAngle(value=sim.DecimalVector(
+                x=0, y=0, z=-90 - float(direction)),
+                unit='°'),
+        )
+        self.flow_domain = external_flow_domain
+            
+        self.direction_flow_domain_ids[
+            direction] = self.simulation_api.create_geometry_primitive(
+                self.project_id,
+                external_flow_domain).geometry_primitive_id
+                
+    def _create_dwt_mesh_primatives(self, direction, scale):
+        
+        
+        l1_refinement = sim.LocalCartesianBox(
+            name='Level 1 Refinement',
+            max=sim.DimensionalVectorLength(value=sim.DecimalVector(
+                x=self.directional_region_of_interest[direction]._centre[0],
+                y=self.directional_region_of_interest[direction]._wt_maximum_point[1]/(680/300),
+                z=self.directional_region_of_interest[direction]._wt_maximum_point[2]/(740/80)),
+                unit='m'),
+
+            min=sim.DimensionalVectorLength(value=sim.DecimalVector(
+                x=self.directional_region_of_interest[direction]._wt_minimum_point[0]/(13500/3500),
+                y=self.directional_region_of_interest[direction]._wt_minimum_point[1]/(680/300),
+                z=self.directional_region_of_interest[direction]._wt_minimum_point[2]),
+                unit='m'),
+            orientation_reference='FLOW_DOMAIN'
+            
+        )
+        
+        l2_refinement = sim.LocalCartesianBox(
+            name='Level 2 Refinement',
+            max=sim.DimensionalVectorLength(value=sim.DecimalVector(
+                x=self.directional_region_of_interest[direction]._centre[0],
+                y=self.directional_region_of_interest[direction]._wt_maximum_point[1],
+                z=self.directional_region_of_interest[direction]._wt_maximum_point[2]/(740/160)),
+                unit='m'),
+
+            min=sim.DimensionalVectorLength(value=sim.DecimalVector(
+                x=self.directional_region_of_interest[direction]._wt_minimum_point[0]/(13500/12000),
+                y=self.directional_region_of_interest[direction]._wt_minimum_point[1],
+                z=self.directional_region_of_interest[direction]._wt_minimum_point[2]),
+                unit='m'),
+            orientation_reference='FLOW_DOMAIN'
+        )
+        
+        l3_refinement = sim.LocalCartesianBox(
+            name='Level 3 Refinement',
+            max=sim.DimensionalVectorLength(value=sim.DecimalVector(
+                x=self.directional_region_of_interest[direction]._centre[0],
+                y=self.directional_region_of_interest[direction]._wt_maximum_point[1],
+                z=self.directional_region_of_interest[direction]._wt_maximum_point[2]/(740/240)),
+                unit='m'),
+
+            min=sim.DimensionalVectorLength(value=sim.DecimalVector(
+                x=self.directional_region_of_interest[direction]._wt_minimum_point[0]/(13500/12760),
+                y=self.directional_region_of_interest[direction]._wt_minimum_point[1],
+                z=self.directional_region_of_interest[direction]._wt_minimum_point[2]),
+                unit='m'),
+            orientation_reference='FLOW_DOMAIN'
+        )
+        
+        mesh_primatives = {}
+        mesh_primatives['Level 1'] = self.simulation_api.create_geometry_primitive(
+            self.project_id,
+            l1_refinement).geometry_primitive_id
+        
+        mesh_primatives['Level 2'] = self.simulation_api.create_geometry_primitive(
+            self.project_id,
+            l2_refinement).geometry_primitive_id
+        
+        mesh_primatives['Level 3'] = self.simulation_api.create_geometry_primitive(
+            self.project_id,
+            l3_refinement).geometry_primitive_id
+        
+        self.mesh_primatives = mesh_primatives
+        return mesh_primatives
+        
+    def _set_dwt_mesh_refinements(self):
+        for direction in self.test_conditions.dwt_objects.keys():
+            scale = self.test_conditions.dwt_objects[direction].scale
+            
+            mesh_primatives = self._create_dwt_mesh_primatives(str(direction), scale)
+            
+            if direction not in self.directional_mesh_refinements:
+                self.directional_mesh_refinements[direction] = []
+            
+            self.directional_mesh_refinements[direction].\
+                append(sim.NewRegionRefinementPacefishV38(
+                    name='Level 1',
+                    mesh_sizing=sim.ManualRegionSizingPacefish(
+                        target_resolution=sim.DimensionalLength(
+                            value=4*scale,
+                            unit='m')
+                        ),
+                    geometry_primitive_uuids=[mesh_primatives['Level 1']]
+                    )
+                )
+                    
+            self.directional_mesh_refinements[direction].\
+                append(sim.NewRegionRefinementPacefishV38(
+                    name='Level 2',
+                    mesh_sizing=sim.ManualRegionSizingPacefish(
+                        target_resolution=sim.DimensionalLength(
+                            value=8*scale,
+                            unit='m')
+                        ),
+                    geometry_primitive_uuids=[mesh_primatives['Level 2']]
+                    )
+                )
+                
+            self.directional_mesh_refinements[direction].\
+                append(sim.NewRegionRefinementPacefishV38(
+                    name='Level 3',
+                    mesh_sizing=sim.ManualRegionSizingPacefish(
+                        target_resolution=sim.DimensionalLength(
+                            value=12*scale,
+                            unit='m')
+                        ),
+                    geometry_primitive_uuids=[mesh_primatives['Level 3']]
+                    )
+                )
+            #self.simulation_model.mesh_settings_new.refinements.
+    def _get_geometry_map(self, _dir=None, names=['BUILDING_OF_INTEREST', 'CONTEXT']):
         '''
         get the map of geometry from a CAD.
-        
-        Currently this only supports single layer STL files, but will 
-        be expanded to take many layers conforming to a naming convention.
 
         Returns
         -------
@@ -493,9 +846,19 @@ class PedestrianComfort():
 
         '''
         project_id = self.project_id
-        geometry_id = self.geometry_id
-        maps = self.geometry_api.get_geometry_mappings(project_id, geometry_id, _class='body')
         
+        if (_dir==None) and not (len(self.directional_geometry_id.keys()) > 0):
+            geometry_id = self.geometry_id
+            
+        elif (_dir!=None) and (len(self.directional_geometry_id.keys()) > 0):
+            geometry_id = self.directional_geometry_id[_dir]
+        else:
+            print(_dir, len(self.directional_geometry_id.keys()))
+            raise ('Direction not supplied, direction: {}, Number of dirs: {}'.format(
+                _dir, len(self.directional_geometry_id.keys())))
+            
+        maps = self.geometry_api.get_geometry_mappings(project_id, geometry_id, _class='body')
+            
         if len(maps.embedded) == 1:
             mesh_geom = maps.embedded[0]
             self.building_geom = [mesh_geom.name]
@@ -508,6 +871,55 @@ class PedestrianComfort():
                         
             self.building_geom = entities
             
+    def _set_geometry_map(self, map_name:str, names=['BUILDING_OF_INTEREST', 'CONTEXT']):
+        mapping_name = map_name
+        self.geometry_mappings[mapping_name] = {}
+        
+        self.geometry_mappings[mapping_name]['body_names'] = names
+        
+    def _get_geometry_maps(self):
+        for _map in self.geometry_mappings.keys():
+            names = self.geometry_mappings[_map]['body_names']
+            if len(self.directional_geometry_id.keys()) > 0:
+                for geometry in self.directional_geometry_id.keys():
+                    maps = self.geometry_api.\
+                        get_geometry_mappings(self.project_id, 
+                                              self.directional_geometry_id[geometry], 
+                                              _class='body')
+                    
+                    entities = []
+                    for entity in maps.embedded:
+                        for attribute in entity.originate_from:
+                            if attribute.body in names:
+                                entities.append(entity.name)
+                    
+                    self.geometry_mappings[_map][geometry] = entities
+            else:
+                maps = self.geometry_api.\
+                    get_geometry_mappings(self.project_id, 
+                                          self.geometry_id, 
+                                          _class='body')
+                    
+                entities = []
+                for entity in maps.embedded:
+                    for attribute in entity.originate_from:
+                        if attribute.body in names:
+                            entities.append(entity.name)
+                
+                self.geometry_mappings[_map][0] = entities
+                
+    def _set_map_as_mesh_roi(self, map_name, direction):
+        mesh_roi = self.geometry_mappings[map_name][direction]
+        
+        self.simulation_model.\
+            mesh_settings_new.\
+            primary_topology.\
+            topological_reference.\
+            entities = mesh_roi
+            
+    def _update_geometry(self, geometry_id):
+        self.simulation_spec.geometry_id = geometry_id
+    
     def _set_buildings_as_mesh_entities(self):
         
         self.simulation_model.\
@@ -625,6 +1037,13 @@ class PedestrianComfort():
         '''
         Uploads all defined probe points in the analysis type to SimScale
 
+        Parameters
+        ----------
+        fraction_from_end : float, optional
+            The Averaging fraction from the end of the simulation, i.e.
+            if running for 3 fluid passes, 0.33 is the last 33%, or if we said
+            300 secons, we average 100s. The default is 0.2.
+
         Returns
         -------
         None.
@@ -662,8 +1081,67 @@ class PedestrianComfort():
             
         self.grid = grids
         
-    def _set_probe_plots(self):
-        self.simulation_model.result_control.probe_points = self.plot_ids
+    def upload_directional_plots(self, fraction_from_end=0.2):
+        '''
+        Create a dictionary of probe directional plots, after uploading csv's from path
+
+        Parameters
+        ----------
+        fraction_from_end : float, optional
+            The Averaging fraction from the end of the simulation, i.e.
+            if running for 3 fluid passes, 0.33 is the last 33%, or if we said
+            300 secons, we average 100s. The default is 0.2.
+
+        Returns
+        -------
+        None.
+
+        '''
+        for direction in self.directional_plot_paths.keys():
+            for plot in self.directional_plot_paths[direction].keys():
+                print("uploading probe plot: {}, for direction{}".format(plot, direction))
+                path = self.directional_plot_paths[direction][plot]
+                probe_points_csv_storage = self.storage_api.create_storage()
+                with open(path, 'rb') as file:
+                    self.api_client.rest_client.PUT(url=probe_points_csv_storage.url,
+                                                    headers={'Content-Type': 'application/octet-stream'},
+                                                    body=file.read())
+                storage_id = probe_points_csv_storage.storage_id
+                
+                probe_points_table_import = \
+                    sim.TableImportRequest(location=\
+                                           sim.TableImportRequestLocation(storage_id))
+                        
+                probe_points_table_import_response = \
+                    self.table_import_api.import_table(self.project_id,
+                                                       probe_points_table_import)
+                table_id = probe_points_table_import_response.table_id
+                
+                probe_plot = sim.ProbePointsResultControl(
+                    name=plot,
+                    write_control=sim.ModerateResolution(),
+                    fraction_from_end=fraction_from_end,
+                    probe_locations=sim.TableDefinedProbeLocations(table_id=table_id)
+                )
+                
+                if direction not in self.directional_plot_ids:
+                    self.directional_plot_ids[direction] = []
+                self.directional_plot_ids[direction].append(probe_plot)
+        
+    def _get_directional_probe_plots_from_dwt(self, dwt_tc):
+        for direction in dwt_tc.dwt_objects.keys():
+            for plot in dwt_tc.dwt_objects[direction].probe_paths.keys():
+                if direction not in self.directional_plot_paths:
+                    self.directional_plot_paths[direction] = {}
+                self.directional_plot_paths[direction][plot] = \
+                    dwt_tc.dwt_objects[direction].probe_paths[plot]
+        
+    def _set_probe_plots(self, direction):
+        if len(self.directional_plot_ids.keys()) > 0:
+            self.simulation_model.result_control.probe_points = self.plot_ids\
+                + self.directional_plot_ids[direction]
+        else:
+            self.simulation_model.result_control.probe_points = self.plot_ids
         
     def run_all_directions(self):
         '''
@@ -676,6 +1154,12 @@ class PedestrianComfort():
         '''
         directions = self.get_wind_directions()
         for key in directions:
+            
+            if len(self.directional_geometry_id.keys()) > 0:
+                pass
+            
+            if len(self.directional_plot_ids.keys()) > 0:
+                pass
             
             self._set_abl_table(key)
             self._set_wind_tunnel(str(key))
@@ -694,6 +1178,45 @@ class PedestrianComfort():
 
             self.run_api.update_simulation_run(self.project_id, self.simulation_id, run_id, simulation_run)
 
+            self.run_ids[key] = run_id
+            
+    def run_all_directions_new(self, roi_map_name):
+        '''
+        Takes all predefined directions and runs them in parrallel
+
+        Returns
+        -------
+        None.
+
+        '''
+        directions = self.get_wind_directions()
+        for key in directions:
+            
+            if len(self.directional_geometry_id.keys()) > 0:
+                self._update_geometry(self.directional_geometry_id[float(key)])
+                self._set_map_as_mesh_roi(roi_map_name, float(key))
+            else:
+                self._set_map_as_mesh_roi(roi_map_name, 0)
+                
+            self._set_probe_plots(float(key))
+            
+            self._set_abl_table(key)
+            self._set_wind_tunnel(str(key))
+            self._update_spec(self.simulation_spec)
+
+            # Create simulation run
+            name="Direction - {} - run {}".format(key, 1)
+            self.runs[key] = name
+            simulation_run = sim.SimulationRun(name=name)
+            simulation_run = self.run_api.create_simulation_run(self.project_id, self.simulation_id, simulation_run)
+            run_id = simulation_run.run_id
+            
+            simulation_run = self.run_api.get_simulation_run(self.project_id, self.simulation_id, run_id)
+            
+            self.run_api.start_simulation_run(self.project_id, self.simulation_id, run_id)
+            
+            self.run_api.update_simulation_run(self.project_id, self.simulation_id, run_id, simulation_run)
+            
             self.run_ids[key] = run_id
 
     def get_wind_directions(self):
@@ -896,7 +1419,9 @@ class model_obj:
                 zmin=sim.WallBC(
                     name="Ground (E)",
                     velocity=sim.NoSlipVBC(
-                        surface_roughness=sim.DimensionalLength(value=0, unit="m"),
+                        no_slip_wall_roughness_type=sim.NoSlipWallEquivalentSandRoughness(
+                            surface_roughness=sim.DimensionalLength(value=0, unit="m")
+                        )
                     ),
                 ),
                 zmax=sim.WallBC(name="Top (F)", velocity=sim.SlipVBC()),
@@ -927,6 +1452,7 @@ class model_obj:
             mesh_settings_new=sim.PacefishAutomesh(
                 new_fineness=sim.PacefishFinenessCoarse(),
                 reference_length_computation=sim.AutomaticReferenceLength(),
+                refinements = [],
                 primary_topology=sim.BuildingsOfInterest(
                     type='BUILDINGS_OF_INTEREST',
                     topological_reference = sim.TopologicalReference(

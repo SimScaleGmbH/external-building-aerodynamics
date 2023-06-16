@@ -148,3 +148,4 @@ crashlytics-build.properties
 fabric.properties
 examples/.DS_Store
 .DS_Store
+examples/epw_to_stat/probability_of_exceedance.png

@@ -339,6 +339,7 @@ class WeatherStatistics():
         self.group_names = None
         self.groups = None
         self.weibull_parameters = None
+        self.total_probability = None
         self.maximum_values = None
         self.minimum_values = None
         self.standard_table = None
@@ -452,6 +453,41 @@ class WeatherStatistics():
             range_probability = cum_probability - probability_next
             df[direction] = range_probability * float(directional_occurances[direction])
 
+        self.standard_table = df.transpose()
+        
+    def standard_table_from_weibull(self):
+        df = pd.DataFrame(
+            np.zeros((len(self.speeds), len(self.directions))),
+            index=self.speeds,
+            columns=self.directions
+        )
+        
+        for direction in self.directions:
+            shape = self.weibull_parameters.loc["shape", direction]
+            scale = self.weibull_parameters.loc["scale", direction]
+            probability = self.weibull_parameters.loc["probability", direction]
+
+            cum_probability = weibull_min.cdf(self.speeds, shape, 0, scale)
+            probability_next = np.roll(cum_probability, 1)
+            probability_next[0] = 0
+
+            range_probability = cum_probability - probability_next
+            
+            df[direction] = range_probability * probability
+            
+        self.total_probability = np.sum(self.weibull_parameters.loc["probability"])
+        error = (1 - self.total_probability)
+        
+        if error > 0.01:
+            distribution = self.weibull_parameters.loc["probability"]\
+                           * 1/self.total_probability
+                           
+            missing_probablity = distribution * error
+            
+            df.iloc[0, :] = df.iloc[0, :] + missing_probablity
+            
+            self.total_probability = np.sum(df.values)
+            
         self.standard_table = df.transpose()
 
     def check_sum_probability(self):

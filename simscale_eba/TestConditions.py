@@ -7,6 +7,9 @@ Created on Fri Jul  2 17:52:11 2021
 import ladybug.epw as epw
 import numpy as np
 
+import pathlib
+import copy
+
 import simscale_eba.BoundaryLayer as abl
 
 
@@ -26,6 +29,12 @@ class WindData():
         self.reference_heights = {}
         self.meteo_correctors = {}
         self.directions = []
+        
+        self.dwt_paths = {}
+        self.dwt_objects = {}
+        self.dwt_roi = {}
+        
+        self.directional_probes = {}
 
     def set_atmospheric_boundary_layer(self,
                                        direction,
@@ -101,6 +110,31 @@ class WindData():
         self._hourly_wind_speed = epw_data.wind_speed
         self._hourly_direction = epw_data.wind_direction
         return epw_data
+    
+    def create_roi_for_dwt(self,
+                           direction,
+                           roi,
+                           nddwt):
+        '''
+        Create an Region of Interest object for each direction from DWT
+
+        Parameters
+        ----------
+        direction : float
+            An angle from north.
+        roi : RegionOfInterest
+            A region of Interest object.
+        nddwt : non_diectional_dwt
+            A non directional wind tunnel.
+
+        Returns
+        -------
+        None.
+
+        '''
+        
+        self.dwt_roi['{}'.format(direction)] = copy.deepcopy(roi)
+        self.dwt_roi['{}'.format(direction)].set_windtunnel_size(dwt=nddwt)
 
     def set_atmospheric_boundary_layers(self,
                                         directions=np.arange(0, 360, 30).tolist(),
@@ -172,7 +206,64 @@ class WindData():
                 method_dict=method_dict)
 
             self.set_atmospheric_boundary_layer(str(_dir), profile)
-
+            
+    def set_digital_wind_tunnels(self,
+                                 roi,
+                                 path = pathlib.Path.cwd(),
+                                 directions=np.arange(0, 360, 30).tolist(),
+                                 surface_roughness_list=(0.3 * np.ones(12)).tolist(),
+                                 reference_speeds=(15 * np.ones(12)).tolist(),
+                                 return_without_units=False):
+        
+        from dwt.create_dwt import non_diectional_dwt
+        
+        for (_dir,
+             z0,
+             reference_speed) in (zip(directions,
+                                       surface_roughness_list,
+                                       reference_speeds)):
+            
+            directionless_digital_wind_tunnel = non_diectional_dwt(z0)
+            
+            (path / '{}'.format(_dir)).mkdir(parents=True, exist_ok=True)
+            
+            dwt_object = directionless_digital_wind_tunnel.create_dwt_from_nddwt(
+                direction=_dir,
+                path=path / '{}'.format(_dir),
+                exclusion_radius=300)
+  
+            self.create_roi_for_dwt(_dir, roi, 
+                                    directionless_digital_wind_tunnel)
+            
+            self.create_dwt_geometry(_dir, dwt_object)
+            
+        self.set_atmospheric_boundary_layers(directions=directions,
+                                             surface_roughness_list=surface_roughness_list,
+                                             reference_speeds=reference_speeds,
+                                             reference_heights=(10 * np.ones(len(reference_speeds))).tolist(),
+                                             method_dict={"u": "UNIFORM",
+                                                          "tke": "YGCJ",
+                                                          "omega": "YGCJ"
+                                                          },
+                                             return_without_units=False)
+    
+    def create_dwt_geometry(self, direction, dwt_object):
+        
+        dwt_object.create_geometry()
+        
+        self.dwt_objects[direction] = dwt_object
+        self.dwt_paths[direction] = dwt_object.path
+        
+    
+    def create_measurement_poles(self,
+                                name=None,
+                                number_of_points=51,
+                                distance_from_centre=np.array([0, 0])):
+        
+        for direction in self.dwt_objects.keys():
+            self.dwt_objects[direction].create_measurement_pole(name=name,
+                                                                number_of_points=number_of_points,
+                                                                distance_from_centre=distance_from_centre)
 
 class WeatherPeriods():
 
