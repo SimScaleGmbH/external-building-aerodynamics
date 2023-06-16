@@ -9,7 +9,7 @@ vtk
 click
 pint
 pyarrow
-sklearn
+scikit-learn
 pyyaml
 
 ladybug-core>=0.38.0
