@@ -6,7 +6,7 @@ pathlib
 scipy
 matplotlib
 vtk
-click
+click>=8.0.0
 pint
 pyarrow
 scikit-learn
