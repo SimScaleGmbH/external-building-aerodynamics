@@ -41,6 +41,7 @@ class HourlyContinuous():
         frames = [pd.DataFrame(self._hourly_timestamp, columns=["datetime"]),
                   pd.DataFrame(self._hourly_direction, columns=["direction"]),
                   pd.DataFrame(self._hourly_wind_speed, columns=["speed"])]
+        
         df = pd.concat(frames, axis=1)
         self.hourly_continuous_df = df.set_index("datetime")
         self._original_df = self.hourly_continuous_df
@@ -111,9 +112,16 @@ class HourlyContinuous():
 class WeatherPeriod():
 
     def __init__(self):
-        self.period_name = None
-        self.start = None
-        self.end = None
+        self.period_name = "Annuual"
+        self.start = datetime(year=2005,
+                            month=1,
+                            day=1,
+                            hour=0)
+        
+        self.end = datetime(year=2005,
+                              month=12,
+                              day=31,
+                              hour=23)
 
     def set_end_datetime(self, end_hour, end_day, end_month):
         self.end = datetime(year=2005,
@@ -233,7 +241,7 @@ def round_speed(df, speeds):
 
 
 def get_weibull(group):
-    ws = group[1]["speed"]
+    ws = group["speed"]
     drop_zero = (ws != 0)
     ws = ws.loc[drop_zero]
     shape, loc, scale = weibull_min.fit(ws, floc=0)
@@ -401,10 +409,17 @@ class WeatherStatistics():
     def sort_directions(self):
         df = self.hourly_continuous.hourly_continuous_df
         drop_zero = (df["speed"] != 0)
+        
         df = df.loc[drop_zero].copy()
         _list = df.groupby(["direction"])
+        lis=_list
         self.group_names = list(_list.groups)
-        self.groups = list(_list)
+        
+        group_dict = {}
+        for group_name in self.group_names:
+            group_dict[group_name] = _list.get_group(group_name)
+        
+        self.groups = group_dict
 
     def set_weibull_parameters(self):
         df = pd.DataFrame(
@@ -414,8 +429,8 @@ class WeatherStatistics():
         )
 
         for group in self.groups:
-            df.loc["shape", group[0]], df.loc["scale", group[0]] = get_weibull(group)
-
+            df.loc["shape", group], df.loc["scale", group] = get_weibull(self.groups[group])
+            
         df.loc["probability", :] = self.get_directional_occurances().values
         self.weibull_parameters = df
 
@@ -442,7 +457,8 @@ class WeatherStatistics():
         directional_occurances = self.get_directional_occurances()
 
         for group in self.groups:
-            direction = group[0]
+            direction = group
+            
             shape = self.weibull_parameters.loc["shape", direction]
             scale = self.weibull_parameters.loc["scale", direction]
 
@@ -503,8 +519,8 @@ class WeatherStatistics():
         )
         peried_size = 0
         for group in self.groups:
-            size = group[1].shape[0]
-            df[group[0]] = size
+            size = self.groups[group].shape[0]
+            df[group] = size
             peried_size += size
 
         df = df / peried_size
@@ -724,7 +740,6 @@ class WeatherStatistics():
         ax.xaxis.grid(False)
         ax.yaxis.grid(False)
 
-        print(type(table.columns.to_numpy()))
         angles = np.radians(table.columns)
 
         colors = cm.winter(self.speeds / 10)
@@ -746,3 +761,60 @@ class WeatherStatistics():
 
         ax.legend(bars, labels, loc=5, bbox_to_anchor=(2, 0.5), frameon=False)
         fig.suptitle('Windrose for period: {}'.format(self.period_name), fontsize=16, y=1.1, ha='center')
+        
+if __name__ == "__main__":
+    
+    run_test_1 = False
+    run_test_2 = True
+    
+    if run_test_1:
+        epw_path = pathlib.Path("/Users/darrenlynch/Documents/GitHub/"\
+                                + "external-building-aerodynamics/examples/"\
+                                + "epw_to_stat/"\
+                                +"USA_MA_Boston-Logan.Intl.AP.725090_TMYx.2004-2018.epw")
+        
+        epw_data = HourlyContinuous()
+        epw_data.import_epw(epw_path)
+        
+        weather_stats = WeatherStatistics()
+    
+        weather_stats.set_directions(np.arange(0, 360, 10))
+        weather_stats.set_speeds(np.arange(0.5, 16, 1))
+        weather_stats.set_hourly_continuous(epw_data)
+    
+    if run_test_2:
+        import csv
+        
+        source_path = pathlib.Path("/Users/darrenlynch/Downloads/Boston-radiance1")
+        
+        def read_data(path):
+            with open(path) as speeds:
+                rows = csv.reader(speeds)
+                for row in rows:
+                    if len(row)<1:
+                        break
+                    else:
+                        data = row
+                        
+            return data
+        
+        speeds = read_data(source_path.as_posix() + r'/speeds.csv')
+        directions = read_data(source_path.as_posix() + r'/directions.csv')
+        
+        array = np.array([speeds, directions]).astype(float)
+        
+        df = pd.DataFrame(array.T, columns=['speed', 'direction'])
+        
+        epw_data = HourlyContinuous()
+        epw_data.hourly_continuous_df = df
+        epw_data._original_df = df
+        
+        weather_stats = WeatherStatistics()
+
+        weather_stats.set_directions(np.arange(0, 360, 10))
+        weather_stats.set_speeds(np.arange(0.5, 16, 1))
+        weather_stats.set_hourly_continuous(epw_data)
+        
+        weather_stats.plot_cumulative_distributions()
+        #print(weather_stats.weibull_parameters)
+    

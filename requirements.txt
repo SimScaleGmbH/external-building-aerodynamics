@@ -11,6 +11,7 @@ pint
 pyarrow
 scikit-learn
 pyyaml
+ladybug-core
 
 ladybug-core>=0.38.0
 simscale-sdk @ git+https://github.com/SimScaleGmbH/simscale-python-sdk.git
