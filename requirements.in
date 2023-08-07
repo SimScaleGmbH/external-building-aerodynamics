@@ -1,0 +1,12 @@
+pandas
+numpy
+scipy
+matplotlib
+vtk
+click
+pint
+pyarrow
+scikit-learn
+pyyaml
+ladybug-core>=0.38.0
+simscale-sdk @ git+https://github.com/SimScaleGmbH/simscale-python-sdk.git
