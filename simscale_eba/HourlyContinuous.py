@@ -94,20 +94,32 @@ class HourlyContinuous():
 
     def apply_period(self):
         self.period_name = self.weather_period.period_name
-
+    
         df = self.hourly_continuous_df
         period = self.weather_period
-        dates = pd.Series(pd.date_range(period.start, period.end))
+    
+        # Generate date ranges based on the period
+        if period.start.month <= period.end.month:  # Case: within the same year
+            dates = pd.date_range(period.start, period.end)
+        else:  # Case: bridges the end of the year
+            # Create two ranges: one for the end of the year, one for the beginning
+            dates_start_year = pd.date_range(period.start, f"{period.start.year}-12-31")
+            dates_end_year = pd.date_range(f"{period.end.year}-01-01", period.end)
+            dates = dates_start_year.append(dates_end_year)
+    
+        # Map to month-day format
         no_year = dates.map(lambda x: x.strftime("%m-%d"))
         df["no_year"] = df.index.map(lambda x: x.strftime("%m-%d"))
         mask = df["no_year"].isin(no_year)
-
+    
+        # Filter data by date
         df = df.loc[mask]
+    
+        # Filter data by time of day
         df = df.between_time('{}:00'.format(period.get_start_hour()),
                              '{}:00'.format(period.get_end_hour()),
                              inclusive='both')
         self.hourly_continuous_df = df
-
 
 class WeatherPeriod():
 
