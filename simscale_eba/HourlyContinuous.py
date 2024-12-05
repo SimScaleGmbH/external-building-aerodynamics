@@ -105,7 +105,7 @@ class HourlyContinuous():
         df = df.loc[mask]
         df = df.between_time('{}:00'.format(period.get_start_hour()),
                              '{}:00'.format(period.get_end_hour()),
-                             include_start=True, include_end=True)
+                             inclusive='both')
         self.hourly_continuous_df = df
 
 
